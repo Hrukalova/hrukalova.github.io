@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали задачи</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = parseInt(urlParams.get('projectId'));
+        const taskId = parseInt(urlParams.get('taskId'));
+
+        if (!projectId || !taskId) {
+            window.location.href = 'dashboard.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="javascript:history.back()" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Задача</h1>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="toggleTaskStatus()" title="Изменить статус">
+                <i class="fas fa-check-circle" id="statusIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="tabs task-tabs">
+        <button class="tab active" onclick="showTab('details')">Описание</button>
+        <button class="tab" onclick="showTab('members')">Участники</button>
+        <button class="tab" onclick="showTab('updates')">Апдейты</button>
+        <button class="tab" onclick="showTab('files')">Файлы</button>
+    </div>
+
+    <main class="container task-details">
+        <!-- Вкладка: Описание -->
+        <div class="tab-content active" id="detailsTab">
+            <div class="task-header">
+                <h2 id="taskTitle">Загрузка...</h2>
+                <div class="task-meta">
+                    <span class="task-section" id="taskSection"></span>
+                    <span class="task-deadline" id="taskDeadline"></span>
+                </div>
+            </div>
+
+            <div class="task-description">
+                <h3>Описание</h3>
+                <p id="taskDescriptionText">Нет описания</p>
+            </div>
+
+            <div class="task-actions">
+                <button class="btn btn-primary" onclick="editTask()">
+                    <i class="fas fa-edit"></i> Редактировать
+                </button>
+                <button class="btn btn-secondary" onclick="deleteTask()">
+                    <i class="fas fa-trash"></i> Удалить
+                </button>
+            </div>
+        </div>
+
+        <!-- Вкладка: Участники -->
+        <div class="tab-content" id="membersTab">
+            <div class="section-header">
+                <h3>Ответственные</h3>
+                <button class="btn btn-small" onclick="addMember()">
+                    <i class="fas fa-plus"></i> Добавить
+                </button>
+            </div>
+
+            <div class="members-list" id="taskMembersList">
+                <!-- Загрузится через JS -->
+            </div>
+        </div>
+
+        <!-- Вкладка: Апдейты -->
+        <div class="tab-content" id="updatesTab">
+            <div class="section-header">
+                <h3>История обновлений</h3>
+                <button class="btn btn-small" onclick="addUpdate()">
+                    <i class="fas fa-plus"></i> Добавить
+                </button>
+            </div>
+
+            <div class="updates-list" id="updatesList">
+                <!-- Загрузится через JS -->
+            </div>
+
+            <div class="add-update-form">
+                <textarea id="updateText"
+                          class="form-input"
+                          rows="3"
+                          placeholder="Добавьте комментарий о прогрессе..."></textarea>
+                <button class="btn btn-primary" onclick="saveUpdate()">
+                    <i class="fas fa-paper-plane"></i> Отправить
+                </button>
+            </div>
+        </div>
+
+        <!-- Вкладка: Файлы -->
+        <div class="tab-content" id="filesTab">
+            <div class="section-header">
+                <h3>Прикрепленные файлы</h3>
+                <button class="btn btn-small" onclick="addFile()">
+                    <i class="fas fa-plus"></i> Добавить
+                </button>
+            </div>
+
+            <div class="files-list" id="filesList">
+                <!-- Загрузится через JS -->
+            </div>
+
+            <div class="file-upload-hint">
+                <i class="fas fa-info-circle"></i>
+                <p>Для загрузки файлов перетащите их сюда или нажмите "Добавить"</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно добавления участника -->
+    <div class="modal" id="addMemberModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Добавить участника</h3>
+                <button class="icon-btn" onclick="closeModal('addMemberModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <select id="memberSelect" class="form-input">
+                    <!-- Заполнится через JS -->
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addMemberModal')">
+                    Отмена
+                </button>
+                <button class="btn btn-primary" onclick="saveMember()">
+                    Добавить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentProject = null;
+        let currentTask = null;
+        projectId = parseInt(new URLSearchParams(window.location.search).get('projectId'));
+        taskId = parseInt(new URLSearchParams(window.location.search).get('taskId'));
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTask();
+        });
+
+        function loadTask() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            currentProject = projects.find(p => p.id === projectId);
+
+            if (!currentProject) {
+                alert('Проект не найден');
+                window.history.back();
+                return;
+            }
+
+            currentTask = currentProject.tasks?.find(t => t.id === taskId);
+
+            if (!currentTask) {
+                alert('Задача не найдена');
+                window.history.back();
+                return;
+            }
+
+            updateTaskDisplay();
+            loadMembers();
+            loadUpdates();
+            loadFiles();
+        }
+
+        function updateTaskDisplay() {
+            document.getElementById('taskTitle').textContent = currentTask.title;
+            document.getElementById('taskSection').textContent = currentTask.section || 'Без раздела';
+            document.getElementById('taskDescriptionText').textContent = currentTask.description || 'Нет описания';
+
+            if (currentTask.deadline) {
+                const deadline = new Date(currentTask.deadline);
+                const now = new Date();
+                const daysDiff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+                let deadlineClass = '';
+                if (daysDiff < 0) {
+                    deadlineClass = 'overdue';
+                } else if (daysDiff === 0) {
+                    deadlineClass = 'today';
+                } else if (daysDiff <= 3) {
+                    deadlineClass = 'urgent';
+                }
+
+                document.getElementById('taskDeadline').innerHTML = `
+                    <i class="far fa-calendar ${deadlineClass}"></i>
+                    ${deadline.toLocaleDateString('ru-RU')}
+                    ${daysDiff < 0 ? ' (просрочено)' : daysDiff === 0 ? ' (сегодня)' : ''}
+                `;
+            } else {
+                document.getElementById('taskDeadline').textContent = 'Нет дедлайна';
+            }
+
+            // Обновляем иконку статуса
+            const statusIcon = document.getElementById('statusIcon');
+            if (currentTask.completed) {
+                statusIcon.className = 'fas fa-check-circle';
+                statusIcon.style.color = 'var(--success-color)';
+            } else {
+                statusIcon.className = 'far fa-circle';
+                statusIcon.style.color = 'var(--text-secondary)';
+            }
+        }
+
+        function loadMembers() {
+            const membersList = document.getElementById('taskMembersList');
+            membersList.innerHTML = '';
+
+            if (!currentTask.assignees || currentTask.assignees.length === 0) {
+                membersList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <p>Нет назначенных участников</p>
+                    </div>
+                `;
+                return;
+            }
+
+            currentTask.assignees.forEach(member => {
+                let displayName = member;
+                let initials = '';
+
+                if (member.includes('@')) {
+                    const username = member.split('@')[0];
+                    displayName = username.charAt(0).toUpperCase() + username.slice(1);
+                    initials = username.charAt(0).toUpperCase();
+                } else {
+                    const nameParts = member.split(' ');
+                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                }
+
+                const memberItem = document.createElement('div');
+                memberItem.className = 'member-item';
+                memberItem.innerHTML = `
+                    <div class="member-avatar">${initials}</div>
+                    <div class="member-info">
+                        <span class="member-name">${displayName}</span>
+                    </div>
+                    <button class="icon-btn btn-small" onclick="removeMember('${member}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                membersList.appendChild(memberItem);
+            });
+
+            // Заполняем select для модального окна
+            updateMemberSelect();
+        }
+
+        function updateMemberSelect() {
+            const select = document.getElementById('memberSelect');
+            select.innerHTML = '<option value="">Выберите участника</option>';
+
+            if (currentProject.members) {
+                currentProject.members.forEach(member => {
+                    // Проверяем, не добавлен ли уже этот участник
+                    if (!currentTask.assignees || !currentTask.assignees.includes(member)) {
+                        let displayName = member;
+                        if (member.includes('@')) {
+                            displayName = member.split('@')[0].charAt(0).toUpperCase() +
+                                        member.split('@')[0].slice(1);
+                        }
+
+                        const option = document.createElement('option');
+                        option.value = member;
+                        option.textContent = displayName;
+                        select.appendChild(option);
+                    }
+                });
+            }
+        }
+
+        function loadUpdates() {
+            const updatesList = document.getElementById('updatesList');
+            updatesList.innerHTML = '';
+
+            if (!currentTask.updates || currentTask.updates.length === 0) {
+                updatesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-history"></i>
+                        <p>Пока нет обновлений</p>
+                        <p>Добавьте первый комментарий о прогрессе</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Сортируем по дате (новые сверху)
+            const sortedUpdates = [...currentTask.updates].sort((a, b) =>
+                new Date(b.date) - new Date(a.date)
+            );
+
+            sortedUpdates.forEach(update => {
+                const updateDate = new Date(update.date);
+                const timeAgo = getTimeAgo(updateDate);
+
+                const updateItem = document.createElement('div');
+                updateItem.className = 'update-item';
+                updateItem.innerHTML = `
+                    <div class="update-header">
+                        <div class="update-author">${update.author}</div>
+                        <div class="update-date">${timeAgo}</div>
+                    </div>
+                    <div class="update-text">${update.text}</div>
+                `;
+                updatesList.appendChild(updateItem);
+            });
+        }
+
+        function loadFiles() {
+            const filesList = document.getElementById('filesList');
+            filesList.innerHTML = '';
+
+            if (!currentTask.files || currentTask.files.length === 0) {
+                filesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <p>Нет прикрепленных файлов</p>
+                    </div>
+                `;
+                return;
+            }
+
+            currentTask.files.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+
+                // Определяем иконку по типу файла
+                let fileIcon = 'fa-file';
+                if (file.name.match(/\.(jpg|jpeg|png|gif)$/i)) fileIcon = 'fa-file-image';
+                else if (file.name.match(/\.(pdf)$/i)) fileIcon = 'fa-file-pdf';
+                else if (file.name.match(/\.(doc|docx)$/i)) fileIcon = 'fa-file-word';
+                else if (file.name.match(/\.(xls|xlsx)$/i)) fileIcon = 'fa-file-excel';
+
+                fileItem.innerHTML = `
+                    <div class="file-icon">
+                        <i class="fas ${fileIcon}"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="icon-btn btn-small" onclick="downloadFile(${index})" title="Скачать">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="icon-btn btn-small" onclick="deleteFile(${index})" title="Удалить">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                filesList.appendChild(fileItem);
+            });
+        }
+
+        function showTab(tabName) {
+            // Скрываем все вкладки
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Убираем активный класс у всех кнопок вкладок
+            document.querySelectorAll('.task-tabs .tab').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Показываем выбранную вкладку
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // Активируем соответствующую кнопку
+            document.querySelector(`.task-tabs .tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        function toggleTaskStatus() {
+            currentTask.completed = !currentTask.completed;
+            saveTaskChanges();
+            updateTaskDisplay();
+        }
+
+        function editTask() {
+            const newTitle = prompt('Новое название задачи:', currentTask.title);
+            if (newTitle) currentTask.title = newTitle;
+
+            const newDesc = prompt('Новое описание:', currentTask.description || '');
+            if (newDesc !== null) currentTask.description = newDesc;
+
+            const newDeadline = prompt('Новый дедлайн (ГГГГ-ММ-ДД):',
+                currentTask.deadline ? currentTask.deadline.split('T')[0] : '');
+            if (newDeadline) currentTask.deadline = newDeadline + 'T00:00:00';
+
+            saveTaskChanges();
+            updateTaskDisplay();
+        }
+
+        function deleteTask() {
+            if (confirm('Удалить эту задачу?')) {
+                currentProject.tasks = currentProject.tasks.filter(t => t.id !== taskId);
+
+                const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+                const projectIndex = projects.findIndex(p => p.id === projectId);
+                if (projectIndex !== -1) {
+                    projects[projectIndex] = currentProject;
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+
+                window.history.back();
+            }
+        }
+
+        function addMember() {
+            document.getElementById('addMemberModal').style.display = 'block';
+        }
+
+        function saveMember() {
+            const select = document.getElementById('memberSelect');
+            const selectedMember = select.value;
+
+            if (!selectedMember) {
+                alert('Выберите участника');
+                return;
+            }
+
+            if (!currentTask.assignees) {
+                currentTask.assignees = [];
+            }
+
+            if (!currentTask.assignees.includes(selectedMember)) {
+                currentTask.assignees.push(selectedMember);
+                saveTaskChanges();
+                loadMembers();
+            }
+
+            closeModal('addMemberModal');
+        }
+
+        function removeMember(member) {
+            if (confirm('Удалить участника из задачи?')) {
+                currentTask.assignees = currentTask.assignees.filter(m => m !== member);
+                saveTaskChanges();
+                loadMembers();
+            }
+        }
+
+        function addUpdate() {
+            document.getElementById('updateText').focus();
+        }
+
+        function saveUpdate() {
+            const text = document.getElementById('updateText').value.trim();
+
+            if (!text) {
+                alert('Введите текст обновления');
+                return;
+            }
+
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const author = currentUser.firstName + ' ' + currentUser.lastName;
+
+            if (!currentTask.updates) {
+                currentTask.updates = [];
+            }
+
+            currentTask.updates.push({
+                author: author,
+                date: new Date().toISOString(),
+                text: text
+            });
+
+            saveTaskChanges();
+            loadUpdates();
+
+            document.getElementById('updateText').value = '';
+        }
+
+        function addFile() {
+            // Имитация загрузки файла
+            const fileName = prompt('Введите название файла (с расширением):', 'документ.pdf');
+
+            if (fileName) {
+                if (!currentTask.files) {
+                    currentTask.files = [];
+                }
+
+                currentTask.files.push({
+                    name: fileName,
+                    size: Math.floor(Math.random() * 5000000) + 1000, // 1KB-5MB
+                    date: new Date().toISOString(),
+                    type: getFileType(fileName)
+                });
+
+                saveTaskChanges();
+                loadFiles();
+            }
+        }
+
+        function downloadFile(index) {
+            const file = currentTask.files[index];
+            alert(`Скачивание файла: ${file.name}\n\nВ реальном приложении здесь будет ссылка на скачивание.`);
+        }
+
+        function deleteFile(index) {
+            if (confirm('Удалить этот файл?')) {
+                currentTask.files.splice(index, 1);
+                saveTaskChanges();
+                loadFiles();
+            }
+        }
+
+        function saveTaskChanges() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            if (projectIndex !== -1) {
+                const taskIndex = projects[projectIndex].tasks.findIndex(t => t.id === taskId);
+                if (taskIndex !== -1) {
+                    projects[projectIndex].tasks[taskIndex] = currentTask;
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Вспомогательные функции
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+
+            if (diffMins < 1) return 'только что';
+            if (diffMins < 60) return `${diffMins} мин. назад`;
+            if (diffHours < 24) return `${diffHours} ч. назад`;
+            if (diffDays === 1) return 'вчера';
+            if (diffDays < 7) return `${diffDays} дн. назад`;
+            return date.toLocaleDateString('ru-RU');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' Б';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+        }
+
+        function getFileType(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            const types = {
+                'pdf': 'document',
+                'doc': 'document', 'docx': 'document',
+                'xls': 'spreadsheet', 'xlsx': 'spreadsheet',
+                'jpg': 'image', 'jpeg': 'image', 'png': 'image', 'gif': 'image',
+                'mp4': 'video', 'avi': 'video', 'mov': 'video',
+                'mp3': 'audio', 'wav': 'audio',
+                'zip': 'archive', 'rar': 'archive', '7z': 'archive'
+            };
+            return types[ext] || 'file';
+        }
+    </script>
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount"></span>
+        </a>
+
+        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        // Функция для обновления бейджа уведомлений
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+        });
+    </script>
+</body>
+</html>

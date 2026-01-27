@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить участников</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Проверка авторизации и темы -->
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="create-project.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Добавить участников</h1>
+        </div>
+
+        <div class="header-actions"></div>
+    </header>
+
+    <main class="container add-members">
+        <div class="form-section">
+            <h2>Почта пользователя</h2>
+            <div class="members-input-container">
+                <input type="email"
+                       id="memberEmail"
+                       placeholder="Введите email участника"
+                       class="form-input">
+                <button type="button" class="btn btn-small" onclick="addMember()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="members-list" id="membersList">
+                <!-- Участники будут добавляться здесь -->
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                Назад
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveMembers()">
+                Далее <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        // Получаем текущего пользователя
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        // Загружаем временный проект
+        let tempProject = JSON.parse(sessionStorage.getItem('tempProject') || '{}');
+
+        // Если нет участников, добавляем текущего пользователя
+        if (!tempProject.members) {
+            tempProject.members = [currentUser.firstName + ' ' + currentUser.lastName];
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+        }
+
+        // Загружаем существующих участников
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMembers();
+
+            // Автозаполнение при нажатии Enter
+            document.getElementById('memberEmail').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addMember();
+                }
+            });
+        });
+
+        function loadMembers() {
+            const membersList = document.getElementById('membersList');
+            membersList.innerHTML = '';
+
+            // Всегда показываем текущего пользователя первым
+            const currentUserFullName = currentUser.firstName + ' ' + currentUser.lastName;
+            const currentUserInitials = currentUser.firstName.charAt(0) + currentUser.lastName.charAt(0);
+
+            if (!tempProject.members.includes(currentUserFullName)) {
+                tempProject.members.unshift(currentUserFullName);
+            }
+
+            tempProject.members.forEach((member, index) => {
+                // Генерируем имя из email если нужно
+                let displayName = member;
+                let initials = '';
+
+                if (member.includes('@')) {
+                    // Если это email, создаем имя
+                    const username = member.split('@')[0];
+                    displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (по почте)';
+                    initials = username.charAt(0).toUpperCase();
+                } else {
+                    // Если это уже имя
+                    const nameParts = member.split(' ');
+                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                }
+
+                const memberItem = document.createElement('div');
+                memberItem.className = 'member-item';
+                memberItem.innerHTML = `
+                    <span class="member-avatar">${initials}</span>
+                    <span class="member-name">${displayName}</span>
+                    ${index > 0 ? `<button class="remove-member" onclick="removeMember('${member}')">
+                        <i class="fas fa-times"></i>
+                    </button>` : ''}
+                `;
+                membersList.appendChild(memberItem);
+            });
+        }
+
+        function addMember() {
+            const emailInput = document.getElementById('memberEmail');
+            const email = emailInput.value.trim();
+
+            if (email && validateEmail(email)) {
+                if (!tempProject.members.some(m => m === email || m.includes(email))) {
+                    tempProject.members.push(email);
+                    sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+                    loadMembers();
+                    emailInput.value = '';
+                } else {
+                    alert('Этот участник уже добавлен');
+                }
+            } else {
+                alert('Пожалуйста, введите корректный email');
+            }
+        }
+
+        function removeMember(memberToRemove) {
+            // Не позволяем удалить себя
+            const currentUserFullName = currentUser.firstName + ' ' + currentUser.lastName;
+            if (memberToRemove === currentUserFullName) {
+                alert('Вы не можете удалить себя из проекта');
+                return;
+            }
+
+            tempProject.members = tempProject.members.filter(member => member !== memberToRemove);
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+            loadMembers();
+        }
+
+        function saveMembers() {
+            // Сохраняем обновленный проект
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+
+            // Также сохраняем участников в глобальный список пользователей
+            updateGlobalUsersList();
+
+            // Переходим к созданию разделов
+            window.location.href = 'create-sections.html';
+        }
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function updateGlobalUsersList() {
+            // Загружаем существующих пользователей
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+
+            // Добавляем новых участников как пользователей
+            tempProject.members.forEach(member => {
+                if (member.includes('@')) {
+                    // Ищем пользователя по email
+                    const existingUser = users.find(u => u.email === member);
+                    if (!existingUser) {
+                        // Создаем нового пользователя
+                        const username = member.split('@')[0];
+                        users.push({
+                            id: Date.now() + Math.random(),
+                            firstName: username.charAt(0).toUpperCase() + username.slice(1),
+                            lastName: 'Участник',
+                            email: member,
+                            avatar: username.charAt(0).toUpperCase()
+                        });
+                    }
+                }
+            });
+
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Уведомления</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Уведомления</h1>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="markAllAsRead()" title="Прочитать все">
+                <i class="fas fa-check-double"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container notifications-page">
+        <div class="notifications-header">
+            <h2>Уведомления</h2>
+            <span class="mark-all-read" onclick="markAllAsRead()">Отметить все как прочитанные</span>
+        </div>
+
+        <div class="notifications-list" id="notificationsList">
+            <!-- Уведомления загрузятся через JS -->
+        </div>
+
+        <div class="empty-state" id="emptyNotifications" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-bell-slash"></i>
+            </div>
+            <h3>Нет уведомлений</h3>
+            <p>Здесь будут появляться уведомления о дедлайнах, задачах и сообщениях</p>
+        </div>
+    </main>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item active">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount">3</span>
+        </a>
+
+        <a href="meetings.html" class="nav-item">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        let notifications = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotifications();
+            updateNotificationBadge();
+        });
+
+        function loadNotifications() {
+            // Загружаем уведомления из localStorage
+            notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+
+            // Если уведомлений нет, создаем тестовые
+            if (notifications.length === 0) {
+                generateSampleNotifications();
+            }
+
+            displayNotifications();
+        }
+
+        function generateSampleNotifications() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const twoDaysAgo = new Date(now);
+            twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+            notifications = [
+                {
+                    id: 1,
+                    type: 'deadline',
+                    title: 'Скоро дедлайн!',
+                    message: 'Задача "написание кода" должна быть выполнена до 15 декабря',
+                    project: 'майнор',
+                    time: now.toISOString(),
+                    read: false,
+                    action: 'project-details.html?id=1'
+                },
+                {
+                    id: 2,
+                    type: 'task',
+                    title: 'Новая задача',
+                    message: 'Вам назначена новая задача в проекте "Веб-разработка"',
+                    project: 'Веб-разработка',
+                    time: yesterday.toISOString(),
+                    read: false,
+                    action: 'section-tasks.html?projectId=1&section=разработка'
+                },
+                {
+                    id: 3,
+                    type: 'system',
+                    title: 'Новый участник',
+                    message: 'Александр присоединился к проекту "Мобильное приложение"',
+                    project: 'Мобильное приложение',
+                    time: yesterday.toISOString(),
+                    read: true,
+                    action: 'project-details.html?id=2'
+                },
+                {
+                    id: 4,
+                    type: 'message',
+                    title: 'Новое сообщение',
+                    message: 'Сергей: "Когда сможем обсудить архитектуру?"',
+                    project: 'Технический чат',
+                    time: twoDaysAgo.toISOString(),
+                    read: true,
+                    action: 'chat-details.html?chat=tech'
+                },
+                {
+                    id: 5,
+                    type: 'deadline',
+                    title: 'Напоминание о встрече',
+                    message: 'Еженедельный созвон команды через 30 минут',
+                    project: 'Общий',
+                    time: twoDaysAgo.toISOString(),
+                    read: true,
+                    action: 'meetings.html'
+                }
+            ];
+
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+        }
+
+        function displayNotifications() {
+            const notificationsList = document.getElementById('notificationsList');
+            const emptyState = document.getElementById('emptyNotifications');
+
+            if (notifications.length === 0) {
+                notificationsList.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            notificationsList.innerHTML = '';
+
+            // Сортируем по времени (новые сверху)
+            const sortedNotifications = [...notifications].sort((a, b) =>
+                new Date(b.time) - new Date(a.time)
+            );
+
+            sortedNotifications.forEach(notification => {
+                const notificationItem = document.createElement('div');
+                notificationItem.className = `notification-item ${notification.read ? '' : 'unread'}`;
+                notificationItem.onclick = () => openNotification(notification);
+
+                const time = new Date(notification.time);
+                const timeAgo = getTimeAgo(time);
+
+                // Определяем иконку по типу
+                let iconClass = '';
+                switch(notification.type) {
+                    case 'deadline': iconClass = 'deadline'; break;
+                    case 'task': iconClass = 'task'; break;
+                    case 'system': iconClass = 'system'; break;
+                    case 'message': iconClass = 'message'; break;
+                }
+
+                notificationItem.innerHTML = `
+                    <div class="notification-icon ${iconClass}">
+                        <i class="fas ${getNotificationIcon(notification.type)}"></i>
+                    </div>
+                    <div class="notification-content">
+                        <div class="notification-title">${notification.title}</div>
+                        <div class="notification-message">${notification.message}</div>
+                        <div class="notification-time">${timeAgo} • ${notification.project}</div>
+                        ${!notification.read ? '<div class="notification-dot"></div>' : ''}
+                    </div>
+                `;
+
+                notificationsList.appendChild(notificationItem);
+            });
+
+            updateNotificationBadge();
+        }
+
+        function getNotificationIcon(type) {
+            switch(type) {
+                case 'deadline': return 'fa-calendar-times';
+                case 'task': return 'fa-tasks';
+                case 'system': return 'fa-cog';
+                case 'message': return 'fa-comment';
+                default: return 'fa-bell';
+            }
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+
+            if (diffMins < 1) return 'только что';
+            if (diffMins < 60) return `${diffMins} мин. назад`;
+            if (diffHours < 24) return `${diffHours} ч. назад`;
+            if (diffDays === 1) return 'вчера';
+            if (diffDays < 7) return `${diffDays} дн. назад`;
+            return date.toLocaleDateString('ru-RU');
+        }
+
+        function openNotification(notification) {
+            // Помечаем как прочитанное
+            if (!notification.read) {
+                notification.read = true;
+                const index = notifications.findIndex(n => n.id === notification.id);
+                if (index !== -1) {
+                    notifications[index].read = true;
+                    localStorage.setItem('notifications', JSON.stringify(notifications));
+                    displayNotifications();
+                }
+            }
+
+            // Переходим по ссылке если есть
+            if (notification.action) {
+                window.location.href = notification.action;
+            }
+        }
+
+        function markAllAsRead() {
+            notifications.forEach(notification => {
+                notification.read = true;
+            });
+
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+            displayNotifications();
+
+            // Показываем подтверждение
+            showToast('Все уведомления помечены как прочитанные');
+        }
+
+        function updateNotificationBadge() {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+
+            // Также обновляем badge в других местах (можно сохранить в sessionStorage)
+            sessionStorage.setItem('unreadNotifications', unreadCount);
+        }
+
+        function showToast(message) {
+            // Создаем toast-уведомление
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--card-bg);
+                color: var(--text-primary);
+                padding: 12px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1001;
+                animation: slideUp 0.3s ease;
+                border: 1px solid var(--border-color);
+            `;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideDown 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 2000);
+        }
+    </script>
+
+    <style>
+        @keyframes slideUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from { transform: translate(-50%, 0); opacity: 1; }
+            to { transform: translate(-50%, 20px); opacity: 0; }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чаты</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Чаты</h1>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="createChat()" title="Новый чат">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container chats-page">
+        <!-- Поиск чатов -->
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text"
+                   id="chatSearch"
+                   placeholder="Поиск чатов..."
+                   class="search-input"
+                   oninput="searchChats()">
+        </div>
+
+        <!-- Список чатов -->
+        <div class="chats-list" id="chatsList">
+            <div class="chat-item unread" onclick="openChat('Общий чат команды')">
+                <div class="chat-avatar">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <h3>Общий чат команды</h3>
+                        <span class="chat-time">12:30</span>
+                    </div>
+                    <p class="chat-preview">Александр: Когда будет готов прототип?</p>
+                    <span class="unread-count">3</span>
+                </div>
+            </div>
+
+            <div class="chat-item" onclick="openChat('Чат с заказчиком')">
+                <div class="chat-avatar">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <h3>Чат с заказчиком</h3>
+                        <span class="chat-time">Вчера</span>
+                    </div>
+                    <p class="chat-preview">Обсуждение требований к финальной версии</p>
+                </div>
+            </div>
+
+            <div class="chat-item" onclick="openChat('Технический чат')">
+                <div class="chat-avatar">
+                    <i class="fas fa-code"></i>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <h3>Технический чат</h3>
+                        <span class="chat-time">2 дн. назад</span>
+                    </div>
+                    <p class="chat-preview">Обсуждение архитектуры базы данных</p>
+                </div>
+            </div>
+
+            <div class="chat-item" onclick="openChat('Дизайн-чат')">
+                <div class="chat-avatar">
+                    <i class="fas fa-paint-brush"></i>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <h3>Дизайн-чат</h3>
+                        <span class="chat-time">3 дн. назад</span>
+                    </div>
+                    <p class="chat-preview">Светлана: Отправила новые макеты интерфейса</p>
+                </div>
+            </div>
+
+            <div class="chat-item" onclick="openChat('Менеджеры')">
+                <div class="chat-avatar">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <h3>Менеджеры</h3>
+                        <span class="chat-time">Неделю назад</span>
+                    </div>
+                    <p class="chat-preview">Планирование следующего спринта</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Подсказка -->
+        <div class="chats-hint">
+            <i class="fas fa-info-circle"></i>
+            <p>Используйте чаты для обсуждения проектов и обмена статистикой</p>
+        </div>
+    </main>
+
+    <!-- Модальное окно создания чата -->
+    <div class="modal" id="createChatModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Создать новый чат</h3>
+                <button class="icon-btn" onclick="closeModal('createChatModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Название чата</label>
+                    <input type="text" id="chatName" class="form-input" placeholder="Например: Обсуждение проекта X">
+                </div>
+
+                <div class="form-group">
+                    <label>Участники</label>
+                    <div class="members-select" id="chatMembersSelect">
+                        <!-- Участники загрузятся через JS -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Тип чата</label>
+                    <select id="chatType" class="form-input">
+                        <option value="project">Проектный чат</option>
+                        <option value="team">Командный чат</option>
+                        <option value="private">Личный чат</option>
+                        <option value="general">Общий чат</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('createChatModal')">
+                    Отмена
+                </button>
+                <button class="btn btn-primary" onclick="saveNewChat()">
+                    Создать чат
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Загружаем список пользователей для создания чата
+            loadUsersForChat();
+        });
+
+        function searchChats() {
+            const searchTerm = document.getElementById('chatSearch').value.toLowerCase();
+            const chatItems = document.querySelectorAll('.chat-item');
+
+            chatItems.forEach(item => {
+                const chatName = item.querySelector('h3').textContent.toLowerCase();
+                const chatPreview = item.querySelector('.chat-preview').textContent.toLowerCase();
+
+                if (chatName.includes(searchTerm) || chatPreview.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function openChat(chatName) {
+            // В реальном приложении здесь была бы страница конкретного чата
+            alert(`Открывается чат: "${chatName}"\n\nВ реальном приложении здесь будет интерфейс мессенджера с историей сообщений, возможностью отправки файлов и т.д.`);
+
+            // Можно сохранить текущий чат в sessionStorage
+            sessionStorage.setItem('currentChat', chatName);
+
+            // Перенаправить на страницу чата, если она есть
+            // window.location.href = `chat-details.html?name=${encodeURIComponent(chatName)}`;
+        }
+
+        function createChat() {
+            document.getElementById('createChatModal').style.display = 'block';
+        }
+
+        function loadUsersForChat() {
+            const membersSelect = document.getElementById('chatMembersSelect');
+            membersSelect.innerHTML = '';
+
+            // Загружаем всех пользователей из системы
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            users.forEach(user => {
+                // Не показываем текущего пользователя (он будет добавлен автоматически)
+                if (user.email !== currentUser.email) {
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-select-item';
+                    userItem.innerHTML = `
+                        <label>
+                            <input type="checkbox" value="${user.email}">
+                            <span class="checkmark"></span>
+                            <span class="user-name">
+                                <span class="user-avatar-small">${user.firstName.charAt(0)}</span>
+                                ${user.firstName} ${user.lastName}
+                            </span>
+                        </label>
+                    `;
+                    membersSelect.appendChild(userItem);
+                }
+            });
+        }
+
+        function saveNewChat() {
+            const chatName = document.getElementById('chatName').value.trim();
+            const chatType = document.getElementById('chatType').value;
+
+            if (!chatName) {
+                alert('Введите название чата');
+                return;
+            }
+
+            // Собираем выбранных участников
+            const selectedUsers = [];
+            document.querySelectorAll('#chatMembersSelect input:checked').forEach(checkbox => {
+                selectedUsers.push(checkbox.value);
+            });
+
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            selectedUsers.push(currentUser.email); // Добавляем создателя
+
+            // В реальном приложении здесь был бы запрос к API
+            alert(`Создан новый чат:\n\nНазвание: ${chatName}\nТип: ${chatType}\nУчастников: ${selectedUsers.length}\n\nЧат добавлен в список.`);
+
+            closeModal('createChatModal');
+
+            // Очищаем форму
+            document.getElementById('chatName').value = '';
+            document.querySelectorAll('#chatMembersSelect input').forEach(cb => {
+                cb.checked = false;
+            });
+
+            // Добавляем новый чат в список (в реальном приложении - перезагружаем список)
+            addChatToList(chatName, selectedUsers.length);
+        }
+
+        function addChatToList(chatName, memberCount) {
+            const chatsList = document.getElementById('chatsList');
+
+            const newChat = document.createElement('div');
+            newChat.className = 'chat-item new-chat';
+            newChat.onclick = () => openChat(chatName);
+            newChat.innerHTML = `
+                <div class="chat-avatar">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <h3>${chatName}</h3>
+                        <span class="chat-time">Только что</span>
+                    </div>
+                    <p class="chat-preview">Новый чат создан. Участников: ${memberCount}</p>
+                </div>
+            `;
+
+            // Добавляем в начало списка
+            chatsList.insertBefore(newChat, chatsList.firstChild);
+
+            // Анимация появления
+            setTimeout(() => {
+                newChat.classList.remove('new-chat');
+            }, 100);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+    </script>
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount"></span>
+        </a>
+
+        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        // Функция для обновления бейджа уведомлений
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+        });
+    </script>
+</body>
+</html>

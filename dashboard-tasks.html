@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои задачи</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-title">
+            <h1>Главная</h1>
+        </div>
+        <a href="settings.html" class="icon-btn">
+            <i class="fas fa-cog"></i>
+        </a>
+    </header>
+
+    <div class="tabs">
+        <a href="dashboard.html" class="tab">все проекты</a>
+        <a href="dashboard-tasks.html" class="tab active">мои задачи</a>
+        <a href="dashboard-deadlines.html" class="tab">дедлайны</a>
+    </div>
+
+    <main class="container tasks-page">
+        <div class="tasks-header">
+            <h2>мои задачи</h2>
+            <div class="filter-buttons">
+                <button class="filter-btn active">Все</button>
+                <button class="filter-btn">Сегодня</button>
+                <button class="filter-btn">Неделя</button>
+            </div>
+        </div>
+
+        <div class="tasks-list" id="tasksList">
+            <!-- Задачи будут добавляться динамически -->
+            <div class="task-item" style="--task-color: #4a6cf7;">
+                <div class="task-color"></div>
+                <div class="task-content">
+                    <h3>написание кода интервью</h3>
+                    <div class="task-meta">
+                        <span class="task-project">майнор / разработка</span>
+                        <span class="task-deadline">5 дней</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="task-item" style="--task-color: #ff6b6b;">
+                <div class="task-color"></div>
+                <div class="task-content">
+                    <h3>исследование</h3>
+                    <div class="task-meta">
+                        <span class="task-project">майнор / анализ</span>
+                        <span class="task-deadline">5 дней</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="task-item" style="--task-color: #51cf66;">
+                <div class="task-color"></div>
+                <div class="task-content">
+                    <h3>создание дизайна</h3>
+                    <div class="task-meta">
+                        <span class="task-project">майнор / разработка</span>
+                        <span class="task-deadline">15 дней</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="task-item" style="--task-color: #ff922b;">
+                <div class="task-color"></div>
+                <div class="task-content">
+                    <h3>транскрибация</h3>
+                    <div class="task-meta">
+                        <span class="task-project">майнор / разработка</span>
+                        <span class="task-deadline">19 дней</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="task-item" style="--task-color: #be4bdb;">
+                <div class="task-color"></div>
+                <div class="task-content">
+                    <h3>создание прототипа</h3>
+                    <div class="task-meta">
+                        <span class="task-project">майнор / разработка</span>
+                        <span class="task-deadline">26 дней</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="task-item" style="--task-color: #22b8cf;">
+                <div class="task-color"></div>
+                <div class="task-content">
+                    <h3>аффинити 1</h3>
+                    <div class="task-meta">
+                        <span class="task-project">майнор / разработка</span>
+                        <span class="task-deadline">30 дней</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="task-action-btn">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/data.js"></script>
+    <script src="js/tasks.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserTasks();
+
+            // Фильтрация задач
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    filterTasks(this.textContent);
+                });
+            });
+        });
+
+        function loadUserTasks() {
+            const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+            const userTasks = tasks.filter(task =>
+                task.assignees && task.assignees.includes(currentUser.firstName + ' ' + currentUser.lastName)
+            );
+
+            if (userTasks.length > 0) {
+                // Можно заменить статические задачи динамическими
+            }
+        }
+
+        function filterTasks(filter) {
+            const tasks = document.querySelectorAll('.task-item');
+            const now = new Date();
+
+            tasks.forEach(task => {
+                const daysText = task.querySelector('.task-deadline').textContent;
+                const days = parseInt(daysText);
+
+                let show = true;
+
+                switch(filter) {
+                    case 'Сегодня':
+                        show = days === 0;
+                        break;
+                    case 'Неделя':
+                        show = days <= 7;
+                        break;
+                    // 'Все' - показываем все
+                }
+
+                task.style.display = show ? 'flex' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Задачи раздела</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = parseInt(urlParams.get('projectId'));
+        const sectionName = decodeURIComponent(urlParams.get('section') || '');
+
+        if (!projectId || !sectionName) {
+            window.location.href = 'dashboard.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="project-details.html?id=${projectId}" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1 id="sectionTitle">Загрузка...</h1>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="filterTasks()" title="Фильтр">
+                <i class="fas fa-filter"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container section-tasks">
+        <!-- Статистика раздела -->
+        <div class="section-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalTasks">0</div>
+                <div class="stat-label">Всего задач</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="completedTasks">0</div>
+                <div class="stat-label">Выполнено</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="inProgressTasks">0</div>
+                <div class="stat-label">В работе</div>
+            </div>
+        </div>
+
+        <!-- Список задач -->
+        <div class="tasks-container" id="tasksContainer">
+            <!-- Задачи загрузятся через JS -->
+        </div>
+    </main>
+
+    <!-- Футер с кнопкой создания задачи -->
+    <footer class="footer-create">
+        <button class="fab-btn" onclick="createTask()">
+            <i class="fas fa-plus"></i>
+        </button>
+    </footer>
+
+    <script>
+        let currentProject = null;
+        let currentSection = '';
+        let filteredTasks = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSectionData();
+        });
+
+        function loadSectionData() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            currentProject = projects.find(p => p.id === projectId);
+            currentSection = decodeURIComponent(new URLSearchParams(window.location.search).get('section') || '');
+
+            if (!currentProject || !currentSection) {
+                alert('Раздел не найден');
+                window.history.back();
+                return;
+            }
+
+            document.getElementById('sectionTitle').textContent = currentSection;
+            updateStatistics();
+            loadTasks();
+        }
+
+        function updateStatistics() {
+            if (!currentProject.tasks) {
+                document.getElementById('totalTasks').textContent = '0';
+                document.getElementById('completedTasks').textContent = '0';
+                document.getElementById('inProgressTasks').textContent = '0';
+                return;
+            }
+
+            const sectionTasks = currentProject.tasks.filter(task => task.section === currentSection);
+            const total = sectionTasks.length;
+            const completed = sectionTasks.filter(task => task.completed).length;
+            const inProgress = sectionTasks.filter(task => task.status === 'in_progress').length;
+
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('inProgressTasks').textContent = inProgress;
+        }
+
+        function loadTasks() {
+            const tasksContainer = document.getElementById('tasksContainer');
+            tasksContainer.innerHTML = '';
+
+            if (!currentProject.tasks || currentProject.tasks.length === 0) {
+                tasksContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <h3>Задач пока нет</h3>
+                        <p>Создайте первую задачу в этом разделе</p>
+                        <button class="btn btn-primary" onclick="createTask()">
+                            <i class="fas fa-plus"></i> Создать задачу
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const sectionTasks = currentProject.tasks.filter(task => task.section === currentSection);
+            filteredTasks = [...sectionTasks];
+
+            if (sectionTasks.length === 0) {
+                tasksContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <h3>Нет задач в этом разделе</h3>
+                        <p>Задачи этого раздела будут отображаться здесь</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Сортируем по статусу и дедлайну
+            sectionTasks.sort((a, b) => {
+                // Сначала невыполненные, потом выполненные
+                if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                // Потом по дедлайну
+                if (a.deadline && b.deadline) {
+                    return new Date(a.deadline) - new Date(b.deadline);
+                }
+                return 0;
+            });
+
+            sectionTasks.forEach(task => {
+                const taskElement = createTaskElement(task);
+                tasksContainer.appendChild(taskElement);
+            });
+        }
+
+        function createTaskElement(task) {
+            const taskDiv = document.createElement('div');
+            taskDiv.className = `task-card ${task.completed ? 'completed' : ''}`;
+            taskDiv.onclick = () => openTask(task.id);
+
+            const deadline = task.deadline ? new Date(task.deadline) : null;
+            const now = new Date();
+            let deadlineClass = '';
+            let deadlineText = '';
+
+            if (deadline) {
+                const daysDiff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+                if (daysDiff < 0) {
+                    deadlineClass = 'overdue';
+                    deadlineText = 'Просрочено';
+                } else if (daysDiff === 0) {
+                    deadlineClass = 'today';
+                    deadlineText = 'Сегодня';
+                } else if (daysDiff <= 3) {
+                    deadlineClass = 'urgent';
+                    deadlineText = `Осталось ${daysDiff} дн.`;
+                } else {
+                    deadlineText = deadline.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'});
+                }
+            }
+
+            // Инициалы ответственных
+            const assigneeInitials = task.assignees ?
+                task.assignees.map(a => {
+                    if (a.includes('@')) {
+                        return a.split('@')[0].charAt(0).toUpperCase();
+                    }
+                    return a.split(' ').map(n => n.charAt(0)).join('').toUpperCase();
+                }).slice(0, 2) : [];
+
+            taskDiv.innerHTML = `
+                <div class="task-header">
+                    <div class="task-status-toggle" onclick="toggleTaskStatus(${task.id}, event)">
+                        <i class="fas ${task.completed ? 'fa-check-circle' : 'far fa-circle'}"></i>
+                    </div>
+                    <h3 class="task-title">${task.title}</h3>
+                    <div class="task-actions">
+                        <button class="icon-btn btn-small" onclick="editTask(${task.id}, event)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+
+                ${task.description ? `
+                    <div class="task-description">
+                        ${task.description}
+                    </div>
+                ` : ''}
+
+                <div class="task-footer">
+                    <div class="task-assignees">
+                        ${assigneeInitials.map(init =>
+                            `<span class="assignee-avatar">${init}</span>`
+                        ).join('')}
+                        ${task.assignees && task.assignees.length > 2 ?
+                            `<span class="more-assignees">+${task.assignees.length - 2}</span>` : ''}
+                    </div>
+
+                    ${deadline ? `
+                        <div class="task-deadline ${deadlineClass}">
+                            <i class="far fa-calendar"></i>
+                            ${deadlineText}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            return taskDiv;
+        }
+
+        function openTask(taskId) {
+            window.location.href = `task-details.html?projectId=${projectId}&taskId=${taskId}`;
+        }
+
+        function createTask() {
+            window.location.href = `create-task.html?projectId=${projectId}&section=${encodeURIComponent(currentSection)}`;
+        }
+
+        function toggleTaskStatus(taskId, event) {
+            event.stopPropagation(); // Предотвращаем открытие задачи
+
+            const taskIndex = currentProject.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex !== -1) {
+                currentProject.tasks[taskIndex].completed = !currentProject.tasks[taskIndex].completed;
+
+                // Обновляем в localStorage
+                const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+                const projectIndex = projects.findIndex(p => p.id === projectId);
+                if (projectIndex !== -1) {
+                    projects[projectIndex] = currentProject;
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+
+                updateStatistics();
+                loadTasks();
+            }
+        }
+
+        function editTask(taskId, event) {
+            event.stopPropagation();
+            const newTitle = prompt('Введите новое название задачи:');
+
+            if (newTitle && newTitle.trim()) {
+                const taskIndex = currentProject.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex !== -1) {
+                    currentProject.tasks[taskIndex].title = newTitle.trim();
+
+                    const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+                    const projectIndex = projects.findIndex(p => p.id === projectId);
+                    if (projectIndex !== -1) {
+                        projects[projectIndex] = currentProject;
+                        localStorage.setItem('projects', JSON.stringify(projects));
+                    }
+
+                    loadTasks();
+                }
+            }
+        }
+
+        function filterTasks() {
+            const filter = prompt('Фильтр по статусу:\n1 - Все\n2 - Выполненные\n3 - Невыполненные\n4 - Срочные (≤3 дня)');
+
+            if (!filter) return;
+
+            let filtered = currentProject.tasks.filter(task => task.section === currentSection);
+
+            switch(filter) {
+                case '2':
+                    filtered = filtered.filter(task => task.completed);
+                    break;
+                case '3':
+                    filtered = filtered.filter(task => !task.completed);
+                    break;
+                case '4':
+                    filtered = filtered.filter(task => {
+                        if (!task.deadline || task.completed) return false;
+                        const deadline = new Date(task.deadline);
+                        const now = new Date();
+                        const daysDiff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+                        return daysDiff <= 3 && daysDiff >= 0;
+                    });
+                    break;
+                // case '1' и другие - показываем все
+            }
+
+            const tasksContainer = document.getElementById('tasksContainer');
+            tasksContainer.innerHTML = '';
+
+            if (filtered.length === 0) {
+                tasksContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-filter"></i>
+                        <h3>Задачи не найдены</h3>
+                        <p>Попробуйте другой фильтр</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(task => {
+                const taskElement = createTaskElement(task);
+                tasksContainer.appendChild(taskElement);
+            });
+        }
+    </script>
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount"></span>
+        </a>
+
+        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        // Функция для обновления бейджа уведомлений
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+        });
+    </script>
+</body>
+</html>

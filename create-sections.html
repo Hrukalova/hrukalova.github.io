@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать разделы</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Проверка авторизации -->
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+        // Применяем тему сразу
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <!-- Шапка -->
+    <header class="header">
+        <a href="add-members.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Создать разделы проекта</h1>
+        </div>
+
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Основное содержимое -->
+    <main class="container create-sections">
+        <div id="sectionsContainer">
+            <!-- Разделы будут добавляться здесь -->
+            <div class="section-item">
+                <div class="section-number">раздел 1</div>
+                <input type="text"
+                       class="section-input"
+                       value="анализ"
+                       placeholder="Название раздела">
+            </div>
+
+            <div class="section-item">
+                <div class="section-number">раздел 2</div>
+                <input type="text"
+                       class="section-input"
+                       value="разработка"
+                       placeholder="Название раздела">
+            </div>
+
+            <div class="section-item">
+                <div class="section-number">раздел 3</div>
+                <input type="text"
+                       class="section-input"
+                       value="тестирование"
+                       placeholder="Название раздела">
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-outline add-section-btn" onclick="addSection()">
+            <i class="fas fa-plus"></i> добавить раздел
+        </button>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                Назад
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveSections()">
+                Далее: Создать задачи
+            </button>
+        </div>
+    </main>
+
+    <script>
+        let sectionCount = 3;
+        let tempProject = JSON.parse(sessionStorage.getItem('tempProject') || '{"sections": [], "members": []}');
+
+        // Загружаем существующие разделы
+        document.addEventListener('DOMContentLoaded', function() {
+            if (tempProject.sections && tempProject.sections.length > 0) {
+                document.getElementById('sectionsContainer').innerHTML = '';
+                tempProject.sections.forEach((section, index) => {
+                    addSectionToUI(section, index + 1);
+                });
+                sectionCount = tempProject.sections.length;
+            } else {
+                // Инициализируем разделы по умолчанию
+                tempProject.sections = ['анализ', 'разработка', 'тестирование'];
+            }
+
+            // Сохраняем обновленный проект
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+        });
+
+        function addSection() {
+            sectionCount++;
+            addSectionToUI('', sectionCount);
+        }
+
+        function addSectionToUI(sectionName, number) {
+            const sectionsContainer = document.getElementById('sectionsContainer');
+            const sectionItem = document.createElement('div');
+            sectionItem.className = 'section-item';
+            sectionItem.innerHTML = `
+                <div class="section-number">раздел ${number}</div>
+                <input type="text"
+                       class="section-input"
+                       value="${sectionName}"
+                       placeholder="Название раздела"
+                       onchange="updateSection(${number - 1}, this.value)">
+                ${number > 3 ? `<button class="remove-section" onclick="removeSection(this, ${number - 1})">
+                    <i class="fas fa-times"></i>
+                </button>` : ''}
+            `;
+            sectionsContainer.appendChild(sectionItem);
+        }
+
+        function updateSection(index, value) {
+            tempProject.sections[index] = value;
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+        }
+
+        function removeSection(button, index) {
+            const sectionItem = button.parentElement;
+            sectionItem.remove();
+
+            tempProject.sections.splice(index, 1);
+            sectionCount--;
+
+            // Обновляем номера разделов
+            const sections = document.querySelectorAll('.section-item');
+            sections.forEach((item, idx) => {
+                item.querySelector('.section-number').textContent = `раздел ${idx + 1}`;
+                // Обновляем индекс в обработчике события
+                const input = item.querySelector('.section-input');
+                input.setAttribute('onchange', `updateSection(${idx}, this.value)`);
+
+                // Обновляем кнопку удаления
+                const removeBtn = item.querySelector('.remove-section');
+                if (removeBtn) {
+                    removeBtn.setAttribute('onclick', `removeSection(this, ${idx})`);
+                }
+            });
+
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+        }
+
+        function saveSections() {
+            // Собираем все названия разделов
+            const sectionInputs = document.querySelectorAll('.section-input');
+            tempProject.sections = Array.from(sectionInputs).map(input => input.value);
+
+            // Проверяем, что есть хотя бы один раздел
+            if (tempProject.sections.length === 0) {
+                alert('Добавьте хотя бы один раздел для проекта');
+                return;
+            }
+
+            // Сохраняем проект
+            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+
+            // Переходим к созданию задач
+            window.location.href = 'create-tasks.html';
+        }
+    </script>
+</body>
+</html>

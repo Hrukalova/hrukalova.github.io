@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-title">
+            <h1>Настройки</h1>
+        </div>
+        <div class="header-actions"></div>
+    </header>
+
+    <main class="container settings-page">
+        <div class="settings-list">
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>уведомления</h3>
+                    <p>Получать уведомления о новых задачах и дедлайнах</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="notifications" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>темная тема</h3>
+                    <p>Включить темный режим интерфейса</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="darkTheme">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>звуковые эффекты</h3>
+                    <p>Воспроизводить звуки при взаимодействии</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="soundEffects">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>напоминания</h3>
+                    <p>Отправлять напоминания о предстоящих дедлайнах</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="reminders">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>язык</h3>
+                    <p>Русский</p>
+                </div>
+                <div class="setting-value">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>о приложении</h3>
+                    <p>Версия 1.0.0</p>
+                </div>
+                <div class="setting-value">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button class="btn btn-outline" onclick="clearAllData()">
+                <i class="fas fa-trash"></i> Очистить все данные
+            </button>
+            <button class="btn btn-secondary" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </button>
+        </div>
+    </main>
+
+    <script src="js/data.js"></script>
+    <script src="js/settings.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Загружаем настройки
+            const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+
+            // Устанавливаем значения переключателей
+            document.getElementById('notifications').checked = settings.notifications !== false;
+            document.getElementById('darkTheme').checked = settings.darkTheme === true;
+            document.getElementById('soundEffects').checked = settings.soundEffects !== false;
+            document.getElementById('reminders').checked = settings.reminders !== false;
+
+            // Применяем тему
+            if (settings.darkTheme) {
+                document.body.classList.add('dark-theme');
+            }
+
+            // Обработчики изменений
+            document.getElementById('darkTheme').addEventListener('change', function() {
+                document.body.classList.toggle('dark-theme', this.checked);
+                saveSettings();
+            });
+
+            document.querySelectorAll('#notifications, #soundEffects, #reminders').forEach(checkbox => {
+                checkbox.addEventListener('change', saveSettings);
+            });
+        });
+
+        function saveSettings() {
+            const settings = {
+                notifications: document.getElementById('notifications').checked,
+                darkTheme: document.getElementById('darkTheme').checked,
+                soundEffects: document.getElementById('soundEffects').checked,
+                reminders: document.getElementById('reminders').checked
+            };
+
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
+
+        function clearAllData() {
+            if (confirm('Вы уверены? Это удалит все проекты и задачи.')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+
+        function logout() {
+            if (confirm('Выйти из аккаунта?')) {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount"></span>
+        </a>
+
+        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        // Функция для обновления бейджа уведомлений
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+        });
+    </script>
+</body>
+</html>

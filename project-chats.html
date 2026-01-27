@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чаты проектов</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Чаты проектов</h1>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="createGroupChat()" title="Новый групповой чат">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text"
+                   id="chatSearch"
+                   placeholder="Поиск чатов или участников..."
+                   class="search-input"
+                   oninput="searchChats()">
+        </div>
+
+        <div class="project-chats-list" id="projectChatsList">
+            <!-- Чаты загрузятся через JS -->
+        </div>
+
+        <div class="empty-state" id="emptyChats" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-comments"></i>
+            </div>
+            <h3>Чатов пока нет</h3>
+            <p>Создайте чат для вашего проекта или присоединитесь к существующему</p>
+            <button class="btn btn-primary" onclick="createGroupChat()">
+                <i class="fas fa-plus"></i> Создать чат
+            </button>
+        </div>
+    </main>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount">3</span>
+        </a>
+
+        <a href="meetings.html" class="nav-item">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item active">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <!-- Модальное окно создания чата -->
+    <div class="modal" id="createChatModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Создать чат проекта</h3>
+                <button class="icon-btn" onclick="closeModal('createChatModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Название чата</label>
+                    <input type="text" id="chatName" class="form-input" placeholder="Например: майнор - общий чат">
+                </div>
+
+                <div class="form-group">
+                    <label>Выберите проект</label>
+                    <select id="chatProject" class="form-input">
+                        <!-- Проекты загрузятся через JS -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Участники</label>
+                    <div class="members-select" id="chatMembersSelect">
+                        <!-- Участники загрузятся через JS -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Тип чата</label>
+                    <div class="chat-type-selector">
+                        <label class="chat-type-option">
+                            <input type="radio" name="chatType" value="general" checked>
+                            <span class="chat-type-icon"><i class="fas fa-users"></i></span>
+                            <span class="chat-type-label">
+                                <strong>Общий чат</strong>
+                                <small>Все участники проекта</small>
+                            </span>
+                        </label>
+
+                        <label class="chat-type-option">
+                            <input type="radio" name="chatType" value="technical">
+                            <span class="chat-type-icon"><i class="fas fa-code"></i></span>
+                            <span class="chat-type-label">
+                                <strong>Технический</strong>
+                                <small>Технические вопросы</small>
+                            </span>
+                        </label>
+
+                        <label class="chat-type-option">
+                            <input type="radio" name="chatType" value="design">
+                            <span class="chat-type-icon"><i class="fas fa-paint-brush"></i></span>
+                            <span class="chat-type-label">
+                                <strong>Дизайн</strong>
+                                <small>Обсуждение дизайна</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('createChatModal')">
+                    Отмена
+                </button>
+                <button class="btn btn-primary" onclick="saveNewChat()">
+                    Создать чат
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let projects = [];
+        let chats = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+            loadProjects();
+            loadChats();
+        });
+
+        function loadProjects() {
+            projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            // Фильтруем проекты, где текущий пользователь участник
+            projects = projects.filter(project => {
+                if (!project.members) return false;
+                return project.members.some(member => {
+                    if (typeof member === 'string') {
+                        return member.includes(currentUser.firstName) ||
+                               member.includes(currentUser.lastName) ||
+                               member === currentUser.email;
+                    }
+                    return false;
+                });
+            });
+
+            populateProjectSelect();
+        }
+
+        function populateProjectSelect() {
+            const select = document.getElementById('chatProject');
+            select.innerHTML = '<option value="">Выберите проект</option>';
+
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                select.appendChild(option);
+            });
+        }
+
+        function loadChats() {
+            chats = JSON.parse(localStorage.getItem('projectChats') || '[]');
+
+            // Если чатов нет, создаем тестовые на основе проектов
+            if (chats.length === 0 && projects.length > 0) {
+                generateSampleChats();
+            }
+
+            displayChats();
+        }
+
+        function generateSampleChats() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            projects.forEach((project, index) => {
+                // Создаем общий чат для каждого проекта
+                chats.push({
+                    id: Date.now() + index,
+                    name: `${project.name} - Общий чат`,
+                    projectId: project.id,
+                    projectName: project.name,
+                    type: 'general',
+                    members: project.members || [],
+                    unread: Math.floor(Math.random() * 5),
+                    lastMessage: {
+                        text: index === 0 ? 'Когда будет готов прототип?' : 'Обсудим на следующем созвоне',
+                        author: index === 0 ? 'Александр' : 'Мария',
+                        time: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString()
+                    },
+                    online: Math.floor(Math.random() * (project.members?.length || 1)) + 1
+                });
+
+                // Создаем технический чат для первого проекта
+                if (index === 0) {
+                    chats.push({
+                        id: Date.now() + index + 100,
+                        name: `${project.name} - Технический`,
+                        projectId: project.id,
+                        projectName: project.name,
+                        type: 'technical',
+                        members: project.members ? project.members.slice(0, 3) : [],
+                        unread: 2,
+                        lastMessage: {
+                            text: 'Нужно обсудить архитектуру БД',
+                            author: 'Сергей',
+                            time: new Date(Date.now() - (2 * 24 * 60 * 60 * 1000)).toISOString()
+                        },
+                        online: 2
+                    });
+                }
+            });
+
+            localStorage.setItem('projectChats', JSON.stringify(chats));
+        }
+
+        function displayChats() {
+            const chatsList = document.getElementById('projectChatsList');
+            const emptyState = document.getElementById('emptyChats');
+
+            if (chats.length === 0) {
+                chatsList.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            chatsList.innerHTML = '';
+
+            // Сортируем по последнему сообщению (новые сверху)
+            const sortedChats = [...chats].sort((a, b) =>
+                new Date(b.lastMessage.time) - new Date(a.lastMessage.time)
+            );
+
+            sortedChats.forEach(chat => {
+                const chatItem = document.createElement('div');
+                chatItem.className = 'project-chat-item';
+                chatItem.onclick = () => openChat(chat);
+
+                const project = projects.find(p => p.id === chat.projectId);
+                const timeAgo = getTimeAgo(new Date(chat.lastMessage.time));
+
+                // Определяем иконку по типу чата
+                let iconClass = 'fa-comments';
+                switch(chat.type) {
+                    case 'technical': iconClass = 'fa-code'; break;
+                    case 'design': iconClass = 'fa-paint-brush'; break;
+                    case 'general': iconClass = 'fa-users'; break;
+                }
+
+                chatItem.innerHTML = `
+                    <div class="project-chat-icon">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="project-chat-info">
+                        <h3>${chat.name}</h3>
+                        <div class="project-chat-meta">
+                            <span>${chat.projectName}</span>
+                            <span class="project-chat-members">
+                                <span class="member-dot"></span>
+                                ${chat.online} онлайн
+                            </span>
+                        </div>
+                        <div class="project-chat-last-message">
+                            ${chat.lastMessage.author}: ${chat.lastMessage.text}
+                        </div>
+                    </div>
+                    <div class="project-chat-right">
+                        <div class="project-chat-time">${timeAgo}</div>
+                        ${chat.unread > 0 ?
+                            `<div class="project-chat-unread">${chat.unread}</div>` : ''}
+                    </div>
+                `;
+
+                chatsList.appendChild(chatItem);
+            });
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+
+            if (diffMins < 1) return 'только что';
+            if (diffMins < 60) return `${diffMins} мин`;
+            if (diffHours < 24) return `${diffHours} ч`;
+            if (diffDays === 1) return 'вчера';
+            if (diffDays < 7) return `${diffDays} дн`;
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        }
+
+        function openChat(chat) {
+            // В реальном приложении здесь была бы страница чата
+            // Сохраняем информацию о чате
+            sessionStorage.setItem('currentChat', JSON.stringify(chat));
+
+            // Сбрасываем счетчик непрочитанных
+            chat.unread = 0;
+            localStorage.setItem('projectChats', JSON.stringify(chats));
+            displayChats();
+
+            // Показываем имитацию чата
+            simulateChatWindow(chat);
+        }
+
+        function simulateChatWindow(chat) {
+            const messages = [
+                { author: 'Вы', text: 'Привет всем!', time: '12:00' },
+                { author: 'Александр', text: 'Привет! Как дела с проектом?', time: '12:05' },
+                { author: 'Мария', text: 'У меня почти готово', time: '12:10' },
+                { author: 'Сергей', text: 'Нужно обсудить детали', time: '12:15' },
+            ];
+
+            let chatWindow = `
+                Чат: ${chat.name}
+                Участников: ${chat.members.length}
+
+                История сообщений:
+            `;
+
+            messages.forEach(msg => {
+                chatWindow += `\n[${msg.time}] ${msg.author}: ${msg.text}`;
+            });
+
+            chatWindow += '\n\n---\nВ реальном приложении здесь будет полноценный интерфейс мессенджера';
+
+            alert(chatWindow);
+        }
+
+        function searchChats() {
+            const searchTerm = document.getElementById('chatSearch').value.toLowerCase();
+            const chatItems = document.querySelectorAll('.project-chat-item');
+
+            chatItems.forEach(item => {
+                const chatName = item.querySelector('h3').textContent.toLowerCase();
+                const projectName = item.querySelector('.project-chat-meta span').textContent.toLowerCase();
+                const lastMessage = item.querySelector('.project-chat-last-message').textContent.toLowerCase();
+
+                if (chatName.includes(searchTerm) ||
+                    projectName.includes(searchTerm) ||
+                    lastMessage.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function createGroupChat() {
+            // Загружаем участников для выбора
+            loadMembersForChat();
+            document.getElementById('createChatModal').style.display = 'block';
+        }
+
+        function loadMembersForChat() {
+            const membersSelect = document.getElementById('chatMembersSelect');
+            membersSelect.innerHTML = '';
+
+            // Получаем участников из выбранного проекта
+            const projectId = document.getElementById('chatProject').value;
+            const project = projects.find(p => p.id == projectId);
+
+            if (project && project.members) {
+                project.members.forEach(member => {
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-select-item';
+
+                    let displayName = member;
+                    if (member.includes('@')) {
+                        displayName = member.split('@')[0];
+                        displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                    }
+
+                    userItem.innerHTML = `
+                        <label>
+                            <input type="checkbox" value="${member}" checked>
+                            <span class="checkmark"></span>
+                            <span class="user-name">
+                                <span class="user-avatar-small">${displayName.charAt(0)}</span>
+                                ${displayName}
+                            </span>
+                        </label>
+                    `;
+                    membersSelect.appendChild(userItem);
+                });
+            }
+        }
+
+        function saveNewChat() {
+            const chatName = document.getElementById('chatName').value.trim();
+            const projectId = document.getElementById('chatProject').value;
+            const chatType = document.querySelector('input[name="chatType"]:checked').value;
+
+            if (!chatName || !projectId) {
+                alert('Заполните название и выберите проект');
+                return;
+            }
+
+            const project = projects.find(p => p.id == projectId);
+            if (!project) {
+                alert('Проект не найден');
+                return;
+            }
+
+            // Собираем выбранных участников
+            const selectedMembers = [];
+            document.querySelectorAll('#chatMembersSelect input:checked').forEach(checkbox => {
+                selectedMembers.push(checkbox.value);
+            });
+
+            // Создаем новый чат
+            const newChat = {
+                id: Date.now(),
+                name: chatName,
+                projectId: projectId,
+                projectName: project.name,
+                type: chatType,
+                members: selectedMembers,
+                unread: 0,
+                lastMessage: {
+                    text: 'Чат создан',
+                    author: 'Система',
+                    time: new Date().toISOString()
+                },
+                online: 1,
+                createdAt: new Date().toISOString()
+            };
+
+            // Добавляем в список
+            chats.unshift(newChat);
+            localStorage.setItem('projectChats', JSON.stringify(chats));
+
+            // Закрываем модальное окно
+            closeModal('createChatModal');
+
+            // Обновляем список чатов
+            displayChats();
+
+            // Показываем подтверждение
+            alert(`Чат "${chatName}" создан для проекта "${project.name}"\n\nУчастников: ${selectedMembers.length}`);
+
+            // Сбрасываем форму
+            document.getElementById('chatName').value = '';
+            document.getElementById('chatProject').value = '';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    </script>
+
+    <style>
+        .chat-type-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-type-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chat-type-option:hover {
+            border-color: var(--primary-color);
+            background: var(--hover-bg);
+        }
+
+        .chat-type-option input[type="radio"]:checked + .chat-type-icon {
+            color: var(--primary-color);
+        }
+
+        .chat-type-option input[type="radio"]:checked {
+            border-color: var(--primary-color);
+        }
+
+        .chat-type-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--hover-bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        .chat-type-label {
+            flex: 1;
+        }
+
+        .chat-type-label strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .chat-type-label small {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .project-chat-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .project-chat-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+    </style>
+</body>
+</html>

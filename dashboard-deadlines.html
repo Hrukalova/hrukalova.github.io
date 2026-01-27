@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дедлайны</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-title">
+            <h1>Главная</h1>
+        </div>
+        <a href="settings.html" class="icon-btn">
+            <i class="fas fa-cog"></i>
+        </a>
+    </header>
+
+    <div class="tabs">
+        <a href="dashboard.html" class="tab">все проекты</a>
+        <a href="dashboard-tasks.html" class="tab">мои задачи</a>
+        <a href="dashboard-deadlines.html" class="tab active">дедлайны</a>
+    </div>
+
+    <main class="container deadlines-page">
+        <div class="deadlines-header">
+            <h2>мои задачи</h2>
+            <h3 class="section-title">дедлайны</h3>
+        </div>
+
+        <div class="deadlines-list">
+            <div class="deadline-item">
+                <div class="deadline-task">написание кода интервью</div>
+                <div class="deadline-date">15 декабря 2025</div>
+            </div>
+
+            <div class="deadline-item">
+                <div class="deadline-task">исследование</div>
+                <div class="deadline-date">18 декабря 2025</div>
+            </div>
+
+            <div class="deadline-item">
+                <div class="deadline-task">создание дизайна</div>
+                <div class="deadline-date">20 декабря 2025</div>
+            </div>
+
+            <div class="deadline-item">
+                <div class="deadline-task">транскрибация</div>
+                <div class="deadline-date">22 декабря 2025</div>
+            </div>
+
+            <div class="deadline-item">
+                <div class="deadline-task">создание прототипа</div>
+                <div class="deadline-date">25 декабря 2025</div>
+            </div>
+
+            <div class="deadline-item">
+                <div class="deadline-task">аффинити 1</div>
+                <div class="deadline-date">30 декабря 2025</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/data.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+
+            // Собираем все задачи пользователя из всех проектов
+            let userTasks = [];
+            projects.forEach(project => {
+                if (project.tasks) {
+                    project.tasks.forEach(task => {
+                        if (task.assignees && task.assignees.some(assignee =>
+                            assignee.includes(currentUser.firstName) || assignee.includes(currentUser.lastName))) {
+                            userTasks.push({
+                                ...task,
+                                projectName: project.name
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Сортируем по дедлайну
+            userTasks.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+
+            // Отображаем задачи
+            const deadlinesList = document.querySelector('.deadlines-list');
+            if (userTasks.length > 0) {
+                deadlinesList.innerHTML = '';
+                userTasks.forEach(task => {
+                    const deadlineDate = new Date(task.deadline);
+                    const formattedDate = deadlineDate.toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+
+                    const deadlineItem = document.createElement('div');
+                    deadlineItem.className = 'deadline-item';
+                    deadlineItem.innerHTML = `
+                        <div class="deadline-task">${task.title}</div>
+                        <div class="deadline-date">${formattedDate}</div>
+                    `;
+                    deadlinesList.appendChild(deadlineItem);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

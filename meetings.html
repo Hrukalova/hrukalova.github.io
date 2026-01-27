@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Созвоны</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Созвоны</h1>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="createMeeting()" title="Создать встречу">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container meetings-page">
+        <div class="calendar-header">
+            <h2>Выбрать время для созвона</h2>
+            <div class="month-navigation">
+                <button class="icon-btn" onclick="previousMonth()">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="current-month" id="currentMonth">Декабрь 2025</span>
+                <button class="icon-btn" onclick="nextMonth()">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Календарь -->
+        <div class="calendar-grid" id="calendarGrid">
+            <!-- Дни недели -->
+            <div class="calendar-day-header">Пн</div>
+            <div class="calendar-day-header">Вт</div>
+            <div class="calendar-day-header">Ср</div>
+            <div class="calendar-day-header">Чт</div>
+            <div class="calendar-day-header">Пт</div>
+            <div class="calendar-day-header">Сб</div>
+            <div class="calendar-day-header">Вс</div>
+
+            <!-- Дни месяца загрузятся через JS -->
+        </div>
+
+        <!-- Фильтры времени -->
+        <div class="time-slots">
+            <div class="time-slots-header">
+                <h3>Свободные часы</h3>
+                <div class="time-filters">
+                    <span class="filter-chip active" onclick="filterTime('all')">Все</span>
+                    <span class="filter-chip" onclick="filterTime('morning')">Утро (9-12)</span>
+                    <span class="filter-chip" onclick="filterTime('afternoon')">День (12-18)</span>
+                    <span class="filter-chip" onclick="filterTime('evening')">Вечер (18-22)</span>
+                </div>
+            </div>
+
+            <div class="time-grid" id="timeGrid">
+                <!-- Временные слоты загрузятся через JS -->
+            </div>
+
+            <div class="time-constraints">
+                <h4>Ограничения по времени:</h4>
+                <div class="constraint-inputs">
+                    <div class="form-group">
+                        <label>Не раньше:</label>
+                        <input type="time" id="notBefore" class="form-input" value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Не позднее:</label>
+                        <input type="time" id="notAfter" class="form-input" value="20:00">
+                    </div>
+                    <button class="btn btn-small" onclick="applyTimeConstraints()">
+                        Применить
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- График доступности -->
+        <div class="availability-chart">
+            <div class="chart-header">
+                <h3>Наиболее подходящие слоты</h3>
+                <p>На основе доступности участников</p>
+            </div>
+
+            <div class="chart-bars" id="availabilityChart">
+                <!-- Столбчатый график загрузится через JS -->
+            </div>
+
+            <div class="chart-labels">
+                <span>Пн</span>
+                <span>Вт</span>
+                <span>Ср</span>
+                <span>Чт</span>
+                <span>Пт</span>
+                <span>Сб</span>
+                <span>Вс</span>
+            </div>
+
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <span class="legend-color optimal"></span>
+                    <span>Оптимально (80-100%)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color good"></span>
+                    <span>Хорошо (60-80%)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color poor"></span>
+                    <span>Плохо (менее 60%)</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Кнопка "Договориться о встрече" -->
+    <div class="meeting-actions">
+        <button class="btn btn-primary btn-block" onclick="scheduleMeeting()">
+            <i class="fas fa-calendar-check"></i> Договориться о встрече
+        </button>
+    </div>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount">3</span>
+        </a>
+
+        <a href="meetings.html" class="nav-item active">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        let selectedTime = null;
+        let timeSlots = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+            renderCalendar();
+            generateTimeSlots();
+            updateAvailabilityChart();
+
+            // Обновляем отображение выбранного дня
+            updateSelectedDay();
+        });
+
+        function renderCalendar() {
+            const calendarGrid = document.getElementById('calendarGrid');
+            const currentMonth = document.getElementById('currentMonth');
+
+            // Обновляем заголовок месяца
+            const monthNames = [
+                'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+            ];
+
+            currentMonth.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+            // Очищаем дни (оставляем только заголовки дней недели)
+            const dayElements = calendarGrid.querySelectorAll('.calendar-day');
+            dayElements.forEach(day => day.remove());
+
+            // Первый день месяца
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            // Последний день месяца
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+            // День недели первого дня (0 - воскресенье, 1 - понедельник и т.д.)
+            let firstDayIndex = firstDay.getDay();
+            // Преобразуем к нашей системе (понедельник = 0)
+            firstDayIndex = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
+            // Добавляем пустые ячейки для дней предыдущего месяца
+            for (let i = 0; i < firstDayIndex; i++) {
+                const prevDate = new Date(firstDay);
+                prevDate.setDate(prevDate.getDate() - (firstDayIndex - i));
+
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day other-month';
+                dayElement.textContent = prevDate.getDate();
+                calendarGrid.appendChild(dayElement);
+            }
+
+            // Добавляем дни текущего месяца
+            const today = new Date();
+            for (let date = new Date(firstDay); date <= lastDay; date.setDate(date.getDate() + 1)) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                dayElement.textContent = date.getDate();
+
+                // Проверяем, сегодня ли это
+                if (date.toDateString() === today.toDateString()) {
+                    dayElement.classList.add('today');
+                }
+
+                // Проверяем, есть ли встречи в этот день
+                if (hasMeetingsOnDate(date)) {
+                    dayElement.classList.add('has-meetings');
+                }
+
+                // Проверяем, выбран ли этот день
+                if (date.toDateString() === selectedDate.toDateString()) {
+                    dayElement.classList.add('selected');
+                }
+
+                dayElement.onclick = () => selectDate(new Date(date));
+                calendarGrid.appendChild(dayElement);
+            }
+
+            // Добавляем дни следующего месяца до конца сетки
+            const totalCells = 42; // 6 строк * 7 дней
+            const daysAdded = firstDayIndex + lastDay.getDate();
+            const nextMonthDays = totalCells - daysAdded;
+
+            for (let i = 1; i <= nextMonthDays; i++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day other-month';
+                dayElement.textContent = i;
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        function selectDate(date) {
+            selectedDate = new Date(date);
+            selectedTime = null;
+
+            renderCalendar();
+            generateTimeSlots();
+            updateSelectedDay();
+        }
+
+        function updateSelectedDay() {
+            const dayName = selectedDate.toLocaleDateString('ru-RU', { weekday: 'long' });
+            const dateString = selectedDate.toLocaleDateString('ru-RU');
+
+            // Можно показать выбранную дату где-то
+            console.log(`Выбран: ${dayName}, ${dateString}`);
+        }
+
+        function hasMeetingsOnDate(date) {
+            // В реальном приложении здесь была бы проверка из базы данных
+            // Сейчас просто случайные дни с встречами
+            const meetings = JSON.parse(localStorage.getItem('meetings') || '[]');
+            return meetings.some(meeting => {
+                const meetingDate = new Date(meeting.date);
+                return meetingDate.toDateString() === date.toDateString();
+            });
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        function generateTimeSlots() {
+            const timeGrid = document.getElementById('timeGrid');
+            timeGrid.innerHTML = '';
+
+            timeSlots = [];
+
+            // Генерируем временные слоты с 8:00 до 22:00
+            for (let hour = 8; hour <= 22; hour++) {
+                for (let minute = 0; minute < 60; minute += 30) {
+                    if (hour === 22 && minute > 0) break; // Не позже 22:00
+
+                    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    const slotDate = new Date(selectedDate);
+                    slotDate.setHours(hour, minute, 0, 0);
+
+                    // Определяем доступность (в реальном приложении проверяем по участникам)
+                    const isAvailable = checkTimeAvailability(slotDate);
+                    const participants = getAvailableParticipants(slotDate);
+
+                    const slot = {
+                        time: timeString,
+                        date: slotDate,
+                        available: isAvailable,
+                        participants: participants,
+                        selected: false
+                    };
+
+                    timeSlots.push(slot);
+
+                    const slotElement = document.createElement('div');
+                    slotElement.className = `time-slot ${isAvailable ? '' : 'unavailable'} ${slot.selected ? 'selected' : ''}`;
+                    slotElement.onclick = () => selectTimeSlot(slot);
+
+                    // Определяем время дня для стилизации
+                    let timeOfDay = '';
+                    if (hour < 12) timeOfDay = 'Утро';
+                    else if (hour < 18) timeOfDay = 'День';
+                    else timeOfDay = 'Вечер';
+
+                    slotElement.innerHTML = `
+                        <div class="time-label">${timeString}</div>
+                        <div class="time-availability">
+                            ${isAvailable ?
+                                `${participants.length}/5 свободны` :
+                                'Занято'}
+                        </div>
+                    `;
+
+                    timeGrid.appendChild(slotElement);
+                }
+            }
+        }
+
+        function checkTimeAvailability(dateTime) {
+            // В реальном приложении здесь была бы проверка календарей участников
+            // Сейчас просто случайная доступность
+            const hour = dateTime.getHours();
+
+            // Будем считать, что рабочие часы 9-20
+            if (hour < 9 || hour >= 20) return false;
+
+            // Случайная доступность для демонстрации
+            return Math.random() > 0.3;
+        }
+
+        function getAvailableParticipants(dateTime) {
+            // В реальном приложении возвращаем список доступных участников
+            // Сейчас возвращаем случайное количество
+            const allParticipants = ['Александр', 'Мария', 'Сергей', 'Анна', 'Дмитрий'];
+            const availableCount = Math.floor(Math.random() * 6); // 0-5
+            return allParticipants.slice(0, availableCount);
+        }
+
+        function selectTimeSlot(slot) {
+            if (!slot.available) return;
+
+            // Сбрасываем выделение у всех слотов
+            timeSlots.forEach(s => s.selected = false);
+            slot.selected = true;
+            selectedTime = slot.date;
+
+            // Обновляем отображение
+            generateTimeSlots();
+
+            // Показываем выбранный слот
+            showSelectedSlotInfo(slot);
+        }
+
+        function showSelectedSlotInfo(slot) {
+            // Можно показать дополнительную информацию о выбранном слоте
+            const timeString = slot.date.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const dateString = slot.date.toLocaleDateString('ru-RU');
+
+            alert(`Выбрано время: ${dateString} ${timeString}\n\nДоступно участников: ${slot.participants.length}/5`);
+        }
+
+        function filterTime(filterType) {
+            const filterChips = document.querySelectorAll('.filter-chip');
+            filterChips.forEach(chip => chip.classList.remove('active'));
+
+            // Активируем выбранный фильтр
+            event.target.classList.add('active');
+
+            // В реальном приложении здесь была бы фильтрация
+            // Сейчас просто обновляем отображение
+            generateTimeSlots();
+        }
+
+        function applyTimeConstraints() {
+            const notBefore = document.getElementById('notBefore').value;
+            const notAfter = document.getElementById('notAfter').value;
+
+            // Здесь можно применить фильтры к временным слотам
+            alert(`Временные ограничения применены:\nНе раньше: ${notBefore}\nНе позднее: ${notAfter}`);
+
+            // Обновляем доступные слоты
+            generateTimeSlots();
+        }
+
+        function updateAvailabilityChart() {
+            const chart = document.getElementById('availabilityChart');
+            chart.innerHTML = '';
+
+            // Генерируем случайные данные для графика
+            for (let i = 0; i < 7; i++) {
+                const availability = Math.floor(Math.random() * 100);
+                const bar = document.createElement('div');
+                bar.className = 'chart-bar';
+                bar.style.height = `${availability}%`;
+
+                // Определяем класс по уровню доступности
+                if (availability >= 80) {
+                    bar.classList.add('optimal');
+                } else if (availability >= 60) {
+                    bar.classList.add('good');
+                } else {
+                    bar.classList.add('poor');
+                }
+
+                // Добавляем подсказку
+                bar.title = `Доступность: ${availability}%`;
+                chart.appendChild(bar);
+            }
+        }
+
+        function scheduleMeeting() {
+            if (!selectedTime) {
+                alert('Пожалуйста, выберите время для встречи');
+                return;
+            }
+
+            const meetingTitle = prompt('Введите тему встречи:', 'Еженедельный созвон');
+            if (!meetingTitle) return;
+
+            const meetingDescription = prompt('Введите описание встречи (необязательно):', 'Обсуждение прогресса по проекту');
+
+            // Создаем объект встречи
+            const meeting = {
+                id: Date.now(),
+                title: meetingTitle,
+                description: meetingDescription || '',
+                date: selectedTime.toISOString(),
+                duration: 60, // минут
+                participants: getAvailableParticipants(selectedTime),
+                createdBy: JSON.parse(localStorage.getItem('currentUser')).email,
+                createdAt: new Date().toISOString()
+            };
+
+            // Сохраняем в localStorage
+            const meetings = JSON.parse(localStorage.getItem('meetings') || '[]');
+            meetings.push(meeting);
+            localStorage.setItem('meetings', JSON.stringify(meetings));
+
+            // Создаем уведомление
+            createMeetingNotification(meeting);
+
+            alert(`Встреча "${meetingTitle}" запланирована на ${selectedTime.toLocaleString('ru-RU')}\n\nУчастники: ${meeting.participants.join(', ')}`);
+
+            // Сбрасываем выбор
+            selectedTime = null;
+            generateTimeSlots();
+        }
+
+        function createMeetingNotification(meeting) {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+
+            notifications.unshift({
+                id: Date.now(),
+                type: 'system',
+                title: 'Новая встреча',
+                message: `Встреча "${meeting.title}" запланирована на ${new Date(meeting.date).toLocaleString('ru-RU')}`,
+                project: 'Созвоны',
+                time: new Date().toISOString(),
+                read: false,
+                action: 'meetings.html'
+            });
+
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+        }
+
+        function createMeeting() {
+            // Открыть форму создания встречи
+            scheduleMeeting();
+        }
+
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    </script>
+
+    <style>
+        .constraint-inputs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .legend-color.optimal {
+            background: var(--success-color);
+        }
+
+        .legend-color.good {
+            background: var(--accent-color);
+        }
+
+        .legend-color.poor {
+            background: var(--warning-color);
+        }
+    </style>
+</body>
+</html>

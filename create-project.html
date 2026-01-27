@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать проект</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Проверка авторизации -->
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <!-- Шапка -->
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title">
+            <h1>Новый проект</h1>
+        </div>
+
+        <div class="header-actions"></div>
+    </header>
+
+    <!-- Основное содержимое -->
+    <main class="container create-project">
+        <form id="projectForm">
+            <div class="form-section">
+                <h2>Название</h2>
+                <input type="text"
+                       id="projectName"
+                       placeholder="Введите название проекта"
+                       class="form-input"
+                       value="майнор">
+            </div>
+
+            <div class="form-section">
+                <h2>Область проекта</h2>
+                <input type="text"
+                       id="projectField"
+                       placeholder="Например: Разработка приложения"
+                       class="form-input"
+                       value="создание приложения">
+            </div>
+
+            <div class="form-section">
+                <h2>Дедлайн</h2>
+                <input type="date"
+                       id="projectDeadline"
+                       class="form-input"
+                       value="2025-12-20">
+                <p class="form-hint">Будет отображаться как: 20 декабря 2025 г.</p>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                    Назад
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveProject()">
+                    Далее <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        function saveProject() {
+            const name = document.getElementById('projectName').value;
+            const field = document.getElementById('projectField').value;
+            const deadline = document.getElementById('projectDeadline').value;
+
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            // Сохраняем данные проекта в sessionStorage для передачи на следующую страницу
+            const projectData = {
+                name,
+                field,
+                deadline,
+                admin: currentUser.email,
+                members: [currentUser.email],
+                sections: [],
+                tasks: [],
+                progress: 0
+            };
+
+            sessionStorage.setItem('tempProject', JSON.stringify(projectData));
+
+            // Переходим к добавлению участников
+            window.location.href = 'add-members.html';
+        }
+
+        // Устанавливаем минимальную дау (сегодня)
+        document.getElementById('projectDeadline').min = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>

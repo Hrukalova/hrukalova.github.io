@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали проекта</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        // Применяем тему
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="dashboard.html" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header-title" id="projectTitle">
+            <!-- Загрузится через JS -->
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="openStats()" title="Статистика работы">
+                <i class="fas fa-chart-bar"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="container project-details">
+        <!-- Информация о проекте -->
+        <div class="project-info-card">
+            <div class="project-meta">
+                <span class="project-field" id="projectField"></span>
+                <span class="project-deadline" id="projectDeadline"></span>
+            </div>
+            <div class="project-progress">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <span id="progressText">0% выполнено</span>
+            </div>
+        </div>
+
+        <!-- Участники проекта -->
+        <div class="section">
+            <h2>Участники</h2>
+            <div class="members-grid" id="membersGrid">
+                <!-- Загрузится через JS -->
+            </div>
+        </div>
+
+        <!-- Разделы проекта -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Разделы проекта</h2>
+                <button class="btn btn-small" onclick="addSection()">
+                    <i class="fas fa-plus"></i> Добавить
+                </button>
+            </div>
+
+            <div class="sections-grid" id="sectionsGrid">
+                <!-- Загрузится через JS -->
+            </div>
+        </div>
+
+        <!-- Ближайшие задачи -->
+        <div class="section">
+            <h2>Ближайшие задачи</h2>
+            <div class="upcoming-tasks" id="upcomingTasks">
+                <!-- Загрузится через JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Футер с кнопкой создания задачи -->
+    <footer class="footer-create">
+        <button class="fab-btn" onclick="createTask()">
+            <i class="fas fa-plus"></i>
+        </button>
+    </footer>
+
+    <!-- Модальное окно добавления раздела -->
+    <div class="modal" id="addSectionModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Добавить раздел</h3>
+                <button class="icon-btn" onclick="closeModal('addSectionModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="text"
+                       id="sectionNameInput"
+                       class="form-input"
+                       placeholder="Название раздела">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addSectionModal')">
+                    Отмена
+                </button>
+                <button class="btn btn-primary" onclick="saveNewSection()">
+                    Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ОБЪЯВЛЯЕМ ПЕРЕМЕННЫЕ ГЛОБАЛЬНО, НЕ ВНУТРИ DOMContentLoaded
+        let currentProject = null;
+        let projectId = null; // Объявляем здесь
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Получаем ID проекта из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = parseInt(urlParams.get('id'));
+
+            if (!projectId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            loadProject();
+        });
+
+        function loadProject() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            currentProject = projects.find(p => p.id === projectId);
+
+            if (!currentProject) {
+                alert('Проект не найден');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // Обновляем заголовок
+            document.getElementById('projectTitle').innerHTML = `<h1>${currentProject.name}</h1>`;
+
+            // Обновляем мета-информацию
+            document.getElementById('projectField').textContent = currentProject.field || 'Общая тема';
+
+            const deadline = new Date(currentProject.deadline);
+            document.getElementById('projectDeadline').innerHTML =
+                `<i class="far fa-calendar-alt"></i> до ${deadline.toLocaleDateString('ru-RU')}`;
+
+            // Обновляем прогресс
+            const progress = calculateProjectProgress();
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${progress}% выполнено`;
+
+            // Загружаем участники
+            loadMembers();
+
+            // Загружаем разделы
+            loadSections();
+
+            // Загружаем ближайшие задачи
+            loadUpcomingTasks();
+        }
+
+        function calculateProjectProgress() {
+            if (!currentProject.tasks || currentProject.tasks.length === 0) return 0;
+
+            const completedTasks = currentProject.tasks.filter(task => task.completed).length;
+            return Math.round((completedTasks / currentProject.tasks.length) * 100);
+        }
+
+        function loadMembers() {
+            const membersGrid = document.getElementById('membersGrid');
+            membersGrid.innerHTML = '';
+
+            const members = currentProject.members || [];
+
+            members.forEach(member => {
+                let displayName = member;
+                let initials = '';
+
+                if (member.includes('@')) {
+                    const username = member.split('@')[0];
+                    displayName = username.charAt(0).toUpperCase() + username.slice(1);
+                    initials = username.charAt(0).toUpperCase();
+                } else {
+                    const nameParts = member.split(' ');
+                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                }
+
+                const memberCard = document.createElement('div');
+                memberCard.className = 'member-card';
+                memberCard.innerHTML = `
+                    <div class="member-avatar">${initials}</div>
+                    <span class="member-name">${displayName}</span>
+                `;
+                membersGrid.appendChild(memberCard);
+            });
+        }
+
+        function loadSections() {
+            const sectionsGrid = document.getElementById('sectionsGrid');
+            sectionsGrid.innerHTML = '';
+
+            if (!currentProject.sections || currentProject.sections.length === 0) {
+                sectionsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder"></i>
+                        <p>Пока нет разделов</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Считаем задачи в каждом разделе
+            const sectionStats = {};
+            currentProject.sections.forEach(section => {
+                sectionStats[section] = 0;
+            });
+
+            if (currentProject.tasks) {
+                currentProject.tasks.forEach(task => {
+                    if (task.section && sectionStats[task.section] !== undefined) {
+                        sectionStats[task.section]++;
+                    }
+                });
+            }
+
+            // Создаем карточки разделов
+            currentProject.sections.forEach((section, index) => {
+                const taskCount = sectionStats[section] || 0;
+
+                const sectionCard = document.createElement('div');
+                sectionCard.className = 'section-card';
+                sectionCard.onclick = () => openSection(section);
+                sectionCard.innerHTML = `
+                    <div class="section-icon">
+                        <i class="fas fa-folder"></i>
+                    </div>
+                    <div class="section-content">
+                        <h3>${section}</h3>
+                        <p>${taskCount} задач</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="icon-btn btn-small" onclick="editSection(${index}, event)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                `;
+                sectionsGrid.appendChild(sectionCard);
+            });
+        }
+
+        function loadUpcomingTasks() {
+            const upcomingTasks = document.getElementById('upcomingTasks');
+            upcomingTasks.innerHTML = '';
+
+            if (!currentProject.tasks || currentProject.tasks.length === 0) {
+                upcomingTasks.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <p>Пока нет задач</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Фильтруем незавершенные задачи и сортируем по дедлайну
+            const now = new Date();
+            const upcoming = currentProject.tasks
+                .filter(task => !task.completed && task.deadline)
+                .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+                .slice(0, 3); // Берем только 3 ближайшие
+
+            upcoming.forEach(task => {
+                const deadline = new Date(task.deadline);
+                const daysDiff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+                let statusClass = '';
+                if (daysDiff < 0) statusClass = 'overdue';
+                else if (daysDiff === 0) statusClass = 'today';
+                else if (daysDiff <= 3) statusClass = 'urgent';
+
+                const taskItem = document.createElement('div');
+                taskItem.className = `task-item ${statusClass}`;
+                taskItem.onclick = () => openTask(task.id);
+                taskItem.innerHTML = `
+                    <div class="task-priority"></div>
+                    <div class="task-content">
+                        <h4>${task.title}</h4>
+                        <div class="task-meta">
+                            <span>${task.section || 'Без раздела'}</span>
+                            <span class="deadline">
+                                <i class="far fa-calendar"></i>
+                                ${deadline.toLocaleDateString('ru-RU')}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="task-status">
+                        ${task.completed ?
+                            '<i class="fas fa-check-circle"></i>' :
+                            '<i class="far fa-circle"></i>'}
+                    </div>
+                `;
+                upcomingTasks.appendChild(taskItem);
+            });
+        }
+
+        function openSection(sectionName) {
+            sessionStorage.setItem('currentSection', sectionName);
+            window.location.href = `section-tasks.html?projectId=${projectId}&section=${encodeURIComponent(sectionName)}`;
+        }
+
+        function openTask(taskId) {
+            sessionStorage.setItem('currentTaskId', taskId);
+            window.location.href = `task-details.html?projectId=${projectId}&taskId=${taskId}`;
+        }
+
+        function createTask() {
+            window.location.href = `create-task.html?projectId=${projectId}`;
+        }
+
+        function openStats() {
+            window.location.href = `project-stats.html?projectId=${projectId}`;
+        }
+
+        function addSection() {
+            document.getElementById('sectionNameInput').value = '';
+            document.getElementById('addSectionModal').style.display = 'block';
+        }
+
+        function saveNewSection() {
+            const sectionName = document.getElementById('sectionNameInput').value.trim();
+
+            if (!sectionName) {
+                alert('Введите название раздела');
+                return;
+            }
+
+            if (!currentProject.sections) {
+                currentProject.sections = [];
+            }
+
+            if (currentProject.sections.includes(sectionName)) {
+                alert('Раздел с таким названием уже существует');
+                return;
+            }
+
+            currentProject.sections.push(sectionName);
+
+            // Сохраняем изменения
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+            if (projectIndex !== -1) {
+                projects[projectIndex] = currentProject;
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
+
+            closeModal('addSectionModal');
+            loadSections();
+        }
+
+        function editSection(index, event) {
+            event.stopPropagation(); // Предотвращаем открытие раздела
+
+            const oldName = currentProject.sections[index];
+            const newName = prompt('Введите новое название раздела:', oldName);
+
+            if (newName && newName !== oldName) {
+                // Обновляем название раздела в проекте
+                currentProject.sections[index] = newName;
+
+                // Обновляем раздел во всех задачах
+                if (currentProject.tasks) {
+                    currentProject.tasks.forEach(task => {
+                        if (task.section === oldName) {
+                            task.section = newName;
+                        }
+                    });
+                }
+
+                // Сохраняем изменения
+                const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+                const projectIndex = projects.findIndex(p => p.id === projectId);
+                if (projectIndex !== -1) {
+                    projects[projectIndex] = currentProject;
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+
+                loadSections();
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+    </script>
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Главная</span>
+        </a>
+
+        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
+            <i class="fas fa-bell nav-icon"></i>
+            <span class="nav-label">Уведомления</span>
+            <span class="notification-badge" id="notificationCount"></span>
+        </a>
+
+        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
+            <i class="fas fa-phone-alt nav-icon"></i>
+            <span class="nav-label">Созвоны</span>
+        </a>
+
+        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
+            <i class="fas fa-comments nav-icon"></i>
+            <span class="nav-label">Чаты</span>
+        </a>
+    </nav>
+
+    <script>
+        // Функция для обновления бейджа уведомлений
+        function updateNotificationBadge() {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationCount');
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotificationBadge();
+        });
+    </script>
+</body>
+</html>
