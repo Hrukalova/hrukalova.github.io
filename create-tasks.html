@@ -8,15 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Проверка авторизации -->
     <script>
         if (!localStorage.getItem('currentUser')) {
             window.location.href = 'index.html';
-        }
-        // Применяем тему сразу
-        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-        if (settings.darkTheme) {
-            document.body.classList.add('dark-theme');
         }
     </script>
 
@@ -35,68 +29,39 @@
     <main class="container create-tasks">
         <form id="taskForm">
             <div class="form-section">
-                <h2>тема</h2>
-                <div class="theme-checkboxes" id="themeCheckboxes">
-                    <label class="theme-checkbox">
-                        <input type="checkbox" name="theme" value="анализ">
-                        <span class="checkmark"></span>
-                        <span class="theme-label">анализ</span>
-                    </label>
-                    <label class="theme-checkbox">
-                        <input type="checkbox" name="theme" value="тестирование" checked>
-                        <span class="checkmark"></span>
-                        <span class="theme-label">тестирование</span>
-                    </label>
-                    <label class="theme-checkbox">
-                        <input type="checkbox" name="theme" value="документация">
-                        <span class="checkmark"></span>
-                        <span class="theme-label">документация</span>
-                    </label>
-                    <label class="theme-checkbox">
-                        <input type="checkbox" name="theme" value="разработка" checked>
-                        <span class="checkmark"></span>
-                        <span class="theme-label">разработка</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h2>название</h2>
+                <h2>название задачи</h2>
                 <input type="text"
                        id="taskName"
                        class="form-input"
-                       placeholder="Введите название задачи"
-                       value="написание кода">
+                       placeholder="Например: Сделать макет главной страницы">
             </div>
 
             <div class="form-section">
-                <h2>дедлайн задачи</h2>
+                <h2>дедлайн</h2>
                 <div class="deadline-input">
-                    <input type="date" id="taskDate" class="form-input" value="2025-12-15">
-                    <input type="time" id="taskTime" class="form-input" value="20:25">
+                    <input type="date" id="taskDate" class="form-input">
+                    <input type="time" id="taskTime" class="form-input" value="12:00">
                 </div>
-                <p class="form-hint" id="deadlineHint">15 декабря 2025 г.</p>
+                <p class="form-hint" id="deadlineHint">Выберите дату</p>
+            </div>
+
+            <div class="form-section">
+                <h2>раздел проекта</h2>
+                <select id="taskSection" class="form-input">
+                    </select>
             </div>
 
             <div class="form-section">
                 <h2>ответственные</h2>
                 <div class="members-selection" id="responsibleMembers">
-                    <!-- Участники будут добавляться динамически -->
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h2>раздел</h2>
-                <select id="taskSection" class="form-input">
-                    <!-- Разделы будут добавляться динамически -->
-                </select>
+                    </div>
             </div>
 
             <div class="form-section">
                 <h2>описание</h2>
                 <textarea id="taskDescription" class="form-input textarea"
                           rows="4"
-                          placeholder="Добавьте описание задачи...">Создание кодовой базы для проекта, написание основных модулей и функций.</textarea>
+                          placeholder="Детали задачи..."></textarea>
             </div>
 
             <div class="form-actions">
@@ -110,42 +75,39 @@
         </form>
     </main>
 
-    <!-- Плавающая кнопка для добавления задач -->
-    <footer class="footer-create">
-        <button class="fab-btn" onclick="addAnotherTask()">
-            <i class="fas fa-plus"></i>
-        </button>
-    </footer>
-
     <script>
         let currentTaskNumber = 1;
         let allTasks = JSON.parse(sessionStorage.getItem('tempTasks') || '[]');
+
+        // Загружаем данные проекта из сессии
         let tempProject = JSON.parse(sessionStorage.getItem('tempProject') || '{}');
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Если разделов нет, возвращаем на шаг назад
             if (!tempProject.sections || tempProject.sections.length === 0) {
+                alert("Сначала создайте разделы!");
                 window.location.href = 'create-sections.html';
                 return;
             }
 
-            // Заполняем участников
+            // 1. Загружаем участников (с красивыми именами)
             loadMembers();
 
-            // Заполняем разделы
+            // 2. Загружаем разделы в выпадающий список
             loadSections();
 
-            // Обновляем подсказку дедлайна
+            // 3. Настройка даты
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('taskDate').value = today;
             updateDeadlineHint();
 
-            // Настройка изменения даты/времени
             document.getElementById('taskDate').addEventListener('change', updateDeadlineHint);
-            document.getElementById('taskTime').addEventListener('change', updateDeadlineHint);
 
-            // Если есть сохраненные задачи, загружаем их
+            // Если вернулись назад и задачи уже были, обновляем счетчик
             if (allTasks.length > 0) {
                 currentTaskNumber = allTasks.length + 1;
-                document.getElementById('taskCounter').textContent = `задача ${currentTaskNumber}`;
+                updateCounter();
             }
         });
 
@@ -153,43 +115,46 @@
             const membersContainer = document.getElementById('responsibleMembers');
             membersContainer.innerHTML = '';
 
-            const members = tempProject.members || [];
+            // Берем список участников (или только себя, если пусто)
+            const membersList = tempProject.members && tempProject.members.length > 0
+                                ? tempProject.members
+                                : [currentUser.email];
 
-            // Если нет участников, добавляем только текущего пользователя
-            if (members.length === 0) {
-                members.push(currentUser.firstName + ' ' + currentUser.lastName);
-                tempProject.members = members;
-                sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
-            }
+            membersList.forEach((member, index) => {
+                const memberDiv = document.createElement('div');
+                memberDiv.className = 'member-checkbox';
+                // Первого участника выбираем по умолчанию для удобства
+                if (index === 0) memberDiv.classList.add('active');
 
-            members.forEach((member, index) => {
-                const memberCheckbox = document.createElement('div');
-                memberCheckbox.className = 'member-checkbox' + (index < 1 ? ' active' : '');
-
-                // Получаем инициалы
-                let initials = '';
+                // --- ЛОГИКА КРАСИВОГО ИМЕНИ ---
                 let displayName = member;
+                let initials = 'U';
 
+                // Если это email (содержит @)
                 if (member.includes('@')) {
-                    // Если это email
-                    const username = member.split('@')[0];
-                    initials = username.charAt(0).toUpperCase();
-                    displayName = username.charAt(0).toUpperCase() + username.slice(1);
+                    const login = member.split('@')[0]; // Берем всё до собаки
+                    // Делаем первую букву заглавной (ula -> Ula)
+                    displayName = login.charAt(0).toUpperCase() + login.slice(1);
+                    initials = displayName.charAt(0);
                 } else {
-                    // Если это имя
-                    const nameParts = member.split(' ');
-                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                    // Если это уже имя (например, "Иван Петров")
+                    displayName = member;
+                    initials = member.charAt(0).toUpperCase();
                 }
+                // -----------------------------
 
-                memberCheckbox.innerHTML = `
+                memberDiv.innerHTML = `
                     <span class="member-avatar">${initials}</span>
                     <span class="member-name">${displayName}</span>
                     <i class="fas fa-check"></i>
+                    <input type="hidden" value="${member}">
                 `;
-                memberCheckbox.addEventListener('click', function() {
+
+                memberDiv.onclick = function() {
                     this.classList.toggle('active');
-                });
-                membersContainer.appendChild(memberCheckbox);
+                };
+
+                membersContainer.appendChild(memberDiv);
             });
         }
 
@@ -197,141 +162,104 @@
             const sectionSelect = document.getElementById('taskSection');
             sectionSelect.innerHTML = '';
 
-            tempProject.sections.forEach((section, index) => {
+            tempProject.sections.forEach(section => {
                 const option = document.createElement('option');
                 option.value = section;
                 option.textContent = section;
-                if (index === 1) { // По умолчанию выбираем второй раздел
-                    option.selected = true;
-                }
                 sectionSelect.appendChild(option);
             });
         }
 
         function updateDeadlineHint() {
-            const dateInput = document.getElementById('taskDate');
-            const timeInput = document.getElementById('taskTime');
-
-            if (dateInput.value) {
-                const date = new Date(dateInput.value + 'T' + (timeInput.value || '00:00'));
-                const formattedDate = date.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
+            const dateVal = document.getElementById('taskDate').value;
+            if (dateVal) {
+                const date = new Date(dateVal);
+                document.getElementById('deadlineHint').textContent = date.toLocaleDateString('ru-RU', {
+                    day: 'numeric', month: 'long', year: 'numeric'
                 });
-
-                document.getElementById('deadlineHint').textContent = formattedDate;
             }
         }
 
-        function addAnotherTask() {
-            // Сохраняем текущую задачу
-            saveCurrentTask();
-
-            // Увеличиваем счетчик
-            currentTaskNumber++;
+        function updateCounter() {
             document.getElementById('taskCounter').textContent = `задача ${currentTaskNumber}`;
-
-            // Сбрасываем форму для новой задачи
-            resetForm();
-
-            // Прокручиваем вверх
-            window.scrollTo(0, 0);
         }
 
         function saveCurrentTask() {
-            const taskData = {
-                id: Date.now() + currentTaskNumber,
-                title: document.getElementById('taskName').value || 'Новая задача',
+            // Собираем email выбранных участников из скрытых полей
+            const selectedMembers = [];
+            document.querySelectorAll('.member-checkbox.active input').forEach(input => {
+                selectedMembers.push(input.value);
+            });
+
+            // Если никто не выбран, назначаем создателя
+            if (selectedMembers.length === 0) {
+                selectedMembers.push(currentUser.email);
+            }
+
+            const task = {
+                id: Date.now(),
+                title: document.getElementById('taskName').value || `Задача ${currentTaskNumber}`,
                 description: document.getElementById('taskDescription').value,
                 deadline: document.getElementById('taskDate').value + 'T' + document.getElementById('taskTime').value,
-                assignees: getSelectedMembers(),
+                assignees: selectedMembers, // Сохраняем email
                 section: document.getElementById('taskSection').value,
-                themes: getSelectedThemes(),
-                completed: false,
                 priority: 'medium',
-                createdAt: new Date().toISOString()
+                completed: false
             };
 
-            allTasks.push(taskData);
+            allTasks.push(task);
             sessionStorage.setItem('tempTasks', JSON.stringify(allTasks));
         }
 
-        function getSelectedMembers() {
-            const selected = [];
-            document.querySelectorAll('.member-checkbox.active').forEach(checkbox => {
-                selected.push(checkbox.querySelector('.member-name').textContent);
-            });
-            return selected;
-        }
+        function addAnotherTask() {
+            saveCurrentTask();
+            currentTaskNumber++;
+            updateCounter();
 
-        function getSelectedThemes() {
-            const selected = [];
-            document.querySelectorAll('#themeCheckboxes input:checked').forEach(checkbox => {
-                selected.push(checkbox.value);
-            });
-            return selected;
-        }
-
-        function resetForm() {
+            // Очищаем поля
             document.getElementById('taskName').value = '';
             document.getElementById('taskDescription').value = '';
-
-            // Сбрасываем чекбоксы тем, оставляя "разработка" по умолчанию
-            document.querySelectorAll('#themeCheckboxes input').forEach(checkbox => {
-                checkbox.checked = (checkbox.value === 'разработка');
-            });
-
-            // Сбрасываем выбор участников, оставляя первого
-            document.querySelectorAll('.member-checkbox').forEach((checkbox, index) => {
-                checkbox.classList.toggle('active', index === 0);
-            });
-
-            // Обновляем подсказку дедлайна
-            updateDeadlineHint();
+            window.scrollTo(0,0);
         }
 
         function saveTasksAndFinish() {
-            // Сохраняем текущую задачу
             saveCurrentTask();
 
-            if (allTasks.length === 0) {
-                if (!confirm('Вы не создали ни одной задачи. Завершить создание проекта без задач?')) {
-                    return;
-                }
-            }
-
-            // Добавляем задачи в проект
-            tempProject.tasks = allTasks;
-
-            // Добавляем ID и дату создания
+            // Финальная сборка проекта
             tempProject.id = Date.now();
             tempProject.createdAt = new Date().toISOString();
+            tempProject.tasks = allTasks;
             tempProject.progress = 0;
+            if (!tempProject.name) tempProject.name = "Новый проект";
 
-            // Генерируем случайное название проекта если его нет
-            if (!tempProject.name) {
-                const sampleProjects = [
-                    "Веб-разработка",
-                    "Мобильное приложение",
-                    "Исследование рынка",
-                    "Анализ данных",
-                    "UI/UX дизайн"
-                ];
-                tempProject.name = sampleProjects[Math.floor(Math.random() * sampleProjects.length)];
-            }
-
-            // Сохраняем проект в localStorage
+            // Сохраняем в базу (localStorage)
             const projects = JSON.parse(localStorage.getItem('projects') || '[]');
             projects.push(tempProject);
             localStorage.setItem('projects', JSON.stringify(projects));
 
-            // Очищаем временные данные
-            sessionStorage.removeItem('tempTasks');
+            // Чистим временную память
             sessionStorage.removeItem('tempProject');
+            sessionStorage.removeItem('tempTasks');
 
-            // Перенаправляем на главную
+            // На главную
             window.location.href = 'dashboard.html';
+        }
+        // Добавляем функцию отметки задачи выполненной прямо при создании
+        function markTaskAsCompleted(taskId) {
+            const tasks = JSON.parse(sessionStorage.getItem('tempTasks') || '[]');
+            const taskIndex = tasks.findIndex(t => t.id === taskId);
+
+            if (taskIndex !== -1) {
+                tasks[taskIndex].completed = true;
+                sessionStorage.setItem('tempTasks', JSON.stringify(tasks));
+
+                // Обновляем отображение если нужно
+                if (typeof loadUserTasks === 'function') {
+                    loadUserTasks();
+                }
+
+                alert('Задача отмечена как выполненная!');
+            }
         }
     </script>
 </body>

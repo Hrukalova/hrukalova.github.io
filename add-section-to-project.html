@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить раздел</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <header class="header">
+        <a href="javascript:window.history.back()" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-title">
+            <h1>Добавить раздел</h1>
+        </div>
+        <div class="header-actions"></div>
+    </header>
+
+    <main class="container create-sections">
+        <div class="form-section">
+            <h2>Название нового раздела</h2>
+            <input type="text"
+                   id="sectionName"
+                   class="form-input"
+                   placeholder="Например: Дизайн, Тестирование, Документация"
+                   required>
+            <p class="form-hint">Разделы помогают организовать задачи по темам</p>
+        </div>
+
+        <div class="form-section">
+            <h2>Текущие разделы проекта</h2>
+            <div id="existingSections">
+                <!-- Существующие разделы загрузятся через JS -->
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                Отмена
+            </button>
+            <button type="button" class="btn btn-primary" onclick="addSection()">
+                <i class="fas fa-plus"></i> Добавить раздел
+            </button>
+        </div>
+    </main>
+
+    <script>
+        let currentProject = null;
+        let projectId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Получаем ID проекта из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = parseInt(urlParams.get('projectId'));
+
+            if (!projectId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            loadProject();
+        });
+
+        function loadProject() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            currentProject = projects.find(p => p.id === projectId);
+
+            if (!currentProject) {
+                alert('Проект не найден');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            displayExistingSections();
+        }
+
+        function displayExistingSections() {
+            const sectionsContainer = document.getElementById('existingSections');
+            const sections = currentProject.sections || [];
+
+            if (sections.length === 0) {
+                sectionsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                        <i class="fas fa-folder" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p>В проекте пока нет разделов</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+
+            sections.forEach((section, index) => {
+                // Считаем задачи в разделе
+                const taskCount = currentProject.tasks ?
+                    currentProject.tasks.filter(t => t.section === section).length : 0;
+
+                html += `
+                    <div class="section-tag">
+                        <span class="section-tag-name">${section}</span>
+                        <span class="section-tag-count">${taskCount}</span>
+                        <button class="section-tag-remove" onclick="removeSection(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            sectionsContainer.innerHTML = html;
+        }
+
+        function addSection() {
+            const sectionNameInput = document.getElementById('sectionName');
+            const sectionName = sectionNameInput.value.trim();
+
+            if (!sectionName) {
+                alert('Введите название раздела');
+                return;
+            }
+
+            // Проверяем, не существует ли уже раздел с таким названием
+            if (currentProject.sections && currentProject.sections.includes(sectionName)) {
+                alert('Раздел с таким названием уже существует');
+                sectionNameInput.value = '';
+                return;
+            }
+
+            // Добавляем раздел
+            if (!currentProject.sections) {
+                currentProject.sections = [];
+            }
+
+            currentProject.sections.push(sectionName);
+
+            // Сохраняем изменения
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            if (projectIndex !== -1) {
+                projects[projectIndex].sections = currentProject.sections;
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
+
+            // Обновляем отображение
+            sectionNameInput.value = '';
+            displayExistingSections();
+
+            alert(`Раздел "${sectionName}" добавлен!`);
+        }
+
+        function removeSection(index) {
+            const sectionName = currentProject.sections[index];
+
+            // Проверяем, есть ли задачи в этом разделе
+            const tasksInSection = currentProject.tasks ?
+                currentProject.tasks.filter(t => t.section === sectionName) : [];
+
+            if (tasksInSection.length > 0) {
+                const moveTasks = confirm(
+                    `В разделе "${sectionName}" есть задачи (${tasksInSection.length} шт.).\n\n` +
+                    'Переместить эти задачи в "Без раздела"?\n\n' +
+                    'Нажмите ОК для перемещения или Отмена для удаления раздела с задачами.'
+                );
+
+                if (moveTasks) {
+                    // Перемещаем задачи в "Без раздела"
+                    tasksInSection.forEach(task => {
+                        task.section = '';
+                    });
+                } else {
+                    // Удаляем задачи вместе с разделом
+                    currentProject.tasks = currentProject.tasks.filter(
+                        t => t.section !== sectionName
+                    );
+                }
+            }
+
+            // Удаляем раздел
+            currentProject.sections.splice(index, 1);
+
+            // Сохраняем изменения
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            if (projectIndex !== -1) {
+                projects[projectIndex] = currentProject;
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
+
+            // Обновляем отображение
+            displayExistingSections();
+
+            alert(`Раздел "${sectionName}" удален`);
+        }
+    </script>
+
+    <style>
+        .section-tag {
+            display: inline-flex;
+            align-items: center;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 14px;
+            gap: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .section-tag-name {
+            font-weight: 500;
+        }
+
+        .section-tag-count {
+            background: var(--primary-color);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .section-tag-remove {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .section-tag-remove:hover {
+            background: rgba(0,0,0,0.1);
+            color: var(--danger-color);
+        }
+    </style>
+</body>
+</html>

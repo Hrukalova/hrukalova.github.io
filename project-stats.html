@@ -6,46 +6,32 @@
     <title>Статистика проекта</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <script>
         if (!localStorage.getItem('currentUser')) {
             window.location.href = 'index.html';
         }
-
-        const projectId = parseInt(new URLSearchParams(window.location.search).get('projectId'));
-
-        if (!projectId) {
-            window.location.href = 'dashboard.html';
-        }
-
-        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-        if (settings.darkTheme) {
-            document.body.classList.add('dark-theme');
-        }
     </script>
 
     <header class="header">
-        <a href="project-details.html?id=${projectId}" class="icon-btn">
+        <a href="javascript:window.history.back()" class="icon-btn">
             <i class="fas fa-arrow-left"></i>
         </a>
-
         <div class="header-title">
-            <h1>Статистика работы</h1>
+            <h1 id="statsTitle">Статистика работы</h1>
         </div>
-
-        <div class="header-actions">
-            <button class="icon-btn" onclick="shareStats()" title="Поделиться">
-                <i class="fas fa-share-alt"></i>
-            </button>
-        </div>
+        <button class="icon-btn" onclick="shareStatistics()" title="Поделиться">
+            <i class="fas fa-share-alt"></i>
+        </button>
     </header>
 
     <main class="container stats-page">
-        <!-- Общая статистика -->
+        <!-- Общая статистика проекта -->
         <div class="stats-overview">
             <div class="stat-card">
-                <div class="stat-icon" style="background-color: #4a6cf7;">
+                <div class="stat-icon" style="background: #4F46E5;">
                     <i class="fas fa-tasks"></i>
                 </div>
                 <div class="stat-info">
@@ -53,9 +39,8 @@
                     <div class="stat-label">Всего задач</div>
                 </div>
             </div>
-
             <div class="stat-card">
-                <div class="stat-icon" style="background-color: #51cf66;">
+                <div class="stat-icon" style="background: #10B981;">
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <div class="stat-info">
@@ -63,19 +48,8 @@
                     <div class="stat-label">Выполнено</div>
                 </div>
             </div>
-
             <div class="stat-card">
-                <div class="stat-icon" style="background-color: #ff6b6b;">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-info">
-                    <div class="stat-value" id="overdueTasks">0</div>
-                    <div class="stat-label">Просрочено</div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon" style="background-color: #ff922b;">
+                <div class="stat-icon" style="background: #F59E0B;">
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-info">
@@ -83,94 +57,80 @@
                     <div class="stat-label">Участников</div>
                 </div>
             </div>
-        </div>
-
-        <!-- Прогресс по разделам -->
-        <div class="section">
-            <h2>Прогресс по разделам</h2>
-            <div class="section-progress" id="sectionProgress">
-                <!-- Загрузится через JS -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #EF4444;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value" id="progressPercent">0%</div>
+                    <div class="stat-label">Прогресс</div>
+                </div>
             </div>
         </div>
 
-        <!-- Вклад участников -->
-        <div class="section">
-            <h2>Вклад участников</h2>
-            <div class="members-contribution" id="membersContribution">
-                <!-- Загрузится через JS -->
+        <!-- Прогресс проекта -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <h3>Прогресс проекта</h3>
+                <div class="progress-percentage" id="overallProgress">0%</div>
+            </div>
+            <div class="progress-bar-large">
+                <div class="progress-fill" id="progressBarFill"></div>
+            </div>
+            <div class="progress-stats">
+                <span>Выполнено: <strong id="doneCount">0</strong> из <strong id="totalCount">0</strong></span>
+                <span>Осталось: <strong id="leftCount">0</strong></span>
             </div>
         </div>
 
-        <!-- Детальная статистика по задачам -->
+        <!-- Гистограмма распределения задач по участникам -->
+        <div class="chart-section">
+            <h3><i class="fas fa-chart-bar"></i> Распределение задач по участникам</h3>
+            <div class="chart-container">
+                <canvas id="tasksDistributionChart"></canvas>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
+        </div>
+
+        <!-- Детализация по участникам -->
         <div class="section">
-            <h2>Детальная статистика</h2>
-            <div class="detailed-stats" id="detailedStats">
-                <!-- Загрузится через JS -->
+            <h3><i class="fas fa-user-friends"></i> Детализация по участникам</h3>
+            <div class="members-detailed" id="membersDetailed">
+                <!-- Заполнится через JS -->
+            </div>
+        </div>
+
+        <!-- Статус задач по разделам -->
+        <div class="section">
+            <h3><i class="fas fa-layer-group"></i> Задачи по разделам</h3>
+            <div class="section-tasks-breakdown" id="sectionTasksBreakdown">
+                <!-- Заполнится через JS -->
             </div>
         </div>
     </main>
 
-    <!-- Модальное окно "Поделиться" -->
-    <div class="modal" id="shareModal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Поделиться статистикой</h3>
-                <button class="icon-btn" onclick="closeShareModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <h4>Отправить в чат:</h4>
-                <div class="chats-list" id="chatsList">
-                    <div class="chat-item" onclick="shareToChat('Общий чат команды')">
-                        <div class="chat-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="chat-info">
-                            <h5>Общий чат команды</h5>
-                            <p>Все участники проекта</p>
-                        </div>
-                    </div>
-
-                    <div class="chat-item" onclick="shareToChat('Чат с заказчиком')">
-                        <div class="chat-icon">
-                            <i class="fas fa-user-tie"></i>
-                        </div>
-                        <div class="chat-info">
-                            <h5>Чат с заказчиком</h5>
-                            <p>Обсуждение прогресса</p>
-                        </div>
-                    </div>
-
-                    <div class="chat-item" onclick="shareToChat('Технический чат')">
-                        <div class="chat-icon">
-                            <i class="fas fa-code"></i>
-                        </div>
-                        <div class="chat-info">
-                            <h5>Технический чат</h5>
-                            <p>Технические вопросы</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="share-summary">
-                    <h4>Будет отправлено:</h4>
-                    <p id="shareSummary">Загрузка данных...</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeShareModal()">
-                    Отмена
-                </button>
-            </div>
-        </div>
+    <!-- Кнопка поделиться -->
+    <div class="meeting-actions">
+        <button class="btn btn-primary btn-block" onclick="shareStatistics()">
+            <i class="fas fa-share-alt"></i> Поделиться статистикой
+        </button>
     </div>
 
     <script>
         let currentProject = null;
-        projectId = parseInt(new URLSearchParams(window.location.search).get('projectId'));
+        let projectId = null;
+        let membersChart = null;
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Получаем ID проекта из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = parseInt(urlParams.get('projectId'));
+
+            if (!projectId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
             loadProjectStats();
         });
 
@@ -180,92 +140,267 @@
 
             if (!currentProject) {
                 alert('Проект не найден');
-                window.history.back();
+                window.location.href = 'dashboard.html';
                 return;
             }
 
-            updateOverviewStats();
-            updateSectionProgress();
-            updateMembersContribution();
-            updateDetailedStats();
+            // Обновляем заголовок
+            document.getElementById('statsTitle').textContent = `Статистика: ${currentProject.name}`;
+
+            // Загружаем и обновляем статистику
+            updateProjectStats();
+
+            // Рендерим графики
+            renderCharts();
+
+            // Обновляем детализацию
+            updateMembersDetailed();
+            updateSectionTasksBreakdown();
+
+            // Обновляем прогресс проекта в глобальном списке
+            updateProjectProgressInStorage();
         }
 
-        function updateOverviewStats() {
-            if (!currentProject.tasks) {
-                document.getElementById('totalTasks').textContent = '0';
-                document.getElementById('completedTasks').textContent = '0';
-                document.getElementById('overdueTasks').textContent = '0';
-                document.getElementById('activeMembers').textContent = currentProject.members?.length || '0';
-                return;
-            }
+        function updateProjectStats() {
+            const tasks = currentProject.tasks || [];
+            const members = currentProject.members || [];
 
-            const totalTasks = currentProject.tasks.length;
-            const completedTasks = currentProject.tasks.filter(task => task.completed).length;
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(t => t.completed).length;
+            const activeMembers = members.length; // Все участники
 
-            const now = new Date();
-            const overdueTasks = currentProject.tasks.filter(task => {
-                if (task.completed || !task.deadline) return false;
-                const deadline = new Date(task.deadline);
-                return deadline < now;
-            }).length;
+            // Прогресс в процентах
+            const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-            // Активные участники - те, кому назначены задачи
-            const assignedMembers = new Set();
-            currentProject.tasks.forEach(task => {
-                if (task.assignees) {
-                    task.assignees.forEach(member => assignedMembers.add(member));
+            // Обновляем карточки
+            document.getElementById('totalTasks').textContent = totalTasks;
+            document.getElementById('completedTasks').textContent = completedTasks;
+            document.getElementById('activeMembers').textContent = activeMembers;
+            document.getElementById('progressPercent').textContent = `${progressPercent}%`;
+
+            // Обновляем прогресс проекта
+            document.getElementById('overallProgress').textContent = `${progressPercent}%`;
+            document.getElementById('progressBarFill').style.width = `${progressPercent}%`;
+
+            // Обновляем счетчики
+            document.getElementById('doneCount').textContent = completedTasks;
+            document.getElementById('totalCount').textContent = totalTasks;
+            document.getElementById('leftCount').textContent = totalTasks - completedTasks;
+        }
+
+        function renderCharts() {
+            const tasks = currentProject.tasks || [];
+            const members = currentProject.members || [];
+
+            // Подготавливаем данные для каждого участника
+            const memberStats = {};
+            const users = JSON.parse(localStorage.getItem('users') || []);
+
+            // Инициализируем всех участников
+            members.forEach(memberEmail => {
+                // Получаем имя участника
+                let memberName = memberEmail;
+                const user = users.find(u => u.email === memberEmail);
+                if (user) {
+                    memberName = `${user.firstName} ${user.lastName}`;
+                } else if (memberEmail.includes('@')) {
+                    memberName = memberEmail.split('@')[0];
+                    memberName = memberName.charAt(0).toUpperCase() + memberName.slice(1);
+                }
+
+                memberStats[memberEmail] = {
+                    name: memberName,
+                    total: 0,
+                    completed: 0,
+                    inProgress: 0,
+                    notStarted: 0
+                };
+            });
+
+            // Считаем статистику для каждого участника
+            tasks.forEach(task => {
+                if (task.assignees && task.assignees.length > 0) {
+                    task.assignees.forEach(assigneeEmail => {
+                        if (memberStats[assigneeEmail]) {
+                            memberStats[assigneeEmail].total++;
+                            if (task.completed) {
+                                memberStats[assigneeEmail].completed++;
+                            } else {
+                                memberStats[assigneeEmail].inProgress++;
+                            }
+                        }
+                    });
                 }
             });
 
-            document.getElementById('totalTasks').textContent = totalTasks;
-            document.getElementById('completedTasks').textContent = completedTasks;
-            document.getElementById('overdueTasks').textContent = overdueTasks;
-            document.getElementById('activeMembers').textContent = assignedMembers.size;
-        }
+            // Если у участника нет задач, ставим notStarted = 0 (все равно будет 0 на графике)
+            Object.values(memberStats).forEach(stat => {
+                if (stat.total === 0) {
+                    stat.notStarted = 0;
+                }
+            });
 
-        function updateSectionProgress() {
-            const sectionProgress = document.getElementById('sectionProgress');
-            sectionProgress.innerHTML = '';
+            // Подготавливаем данные для гистограммы
+            const memberNames = [];
+            const completedData = [];
+            const inProgressData = [];
+            const notStartedData = [];
 
-            if (!currentProject.sections || currentProject.sections.length === 0) {
-                sectionProgress.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-folder"></i>
-                        <p>Нет разделов в проекте</p>
-                    </div>
-                `;
-                return;
+            Object.values(memberStats).forEach(stat => {
+                memberNames.push(stat.name);
+                completedData.push(stat.completed);
+                inProgressData.push(stat.inProgress);
+                notStartedData.push(0); // Всегда 0, так как это виртуальная категория
+            });
+
+            // Цвета для графика
+            const colors = {
+                completed: '#10B981', // Зеленый
+                inProgress: '#F59E0B', // Желтый
+                notStarted: '#6B7280' // Серый
+            };
+
+            // Уничтожаем предыдущий график если есть
+            if (membersChart) {
+                membersChart.destroy();
             }
 
-            currentProject.sections.forEach(section => {
-                const sectionTasks = currentProject.tasks?.filter(task => task.section === section) || [];
-                const total = sectionTasks.length;
-                const completed = sectionTasks.filter(task => task.completed).length;
-                const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const ctx = document.getElementById('tasksDistributionChart').getContext('2d');
 
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'section-progress-item';
-                sectionDiv.innerHTML = `
-                    <div class="section-header">
-                        <h4>${section}</h4>
-                        <span>${completed}/${total} задач</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: ${progress}%"></div>
-                    </div>
-                    <div class="progress-text">${progress}% выполнено</div>
-                `;
-                sectionProgress.appendChild(sectionDiv);
+            membersChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: memberNames,
+                    datasets: [
+                        {
+                            label: 'Выполнено',
+                            data: completedData,
+                            backgroundColor: colors.completed,
+                            borderColor: colors.completed,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'В работе',
+                            data: inProgressData,
+                            backgroundColor: colors.inProgress,
+                            borderColor: colors.inProgress,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Не начато',
+                            data: notStartedData,
+                            backgroundColor: colors.notStarted,
+                            borderColor: colors.notStarted,
+                            borderWidth: 1,
+                            hidden: true // Скрываем по умолчанию
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: false,
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Количество задач'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000
+                    }
+                }
             });
+
+            // Обновляем легенду
+            updateChartLegend(memberStats);
         }
 
-        function updateMembersContribution() {
-            const membersContribution = document.getElementById('membersContribution');
-            membersContribution.innerHTML = '';
+        function updateChartLegend(memberStats) {
+            const legend = document.getElementById('chartLegend');
+            legend.innerHTML = '';
 
-            if (!currentProject.members || currentProject.members.length === 0) {
-                membersContribution.innerHTML = `
-                    <div class="empty-state">
+            // Создаем таблицу со статистикой
+            let legendHTML = `
+                <div class="legend-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Участник</th>
+                                <th>Всего</th>
+                                <th>Выполнено</th>
+                                <th>В работе</th>
+                                <th>Прогресс</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            Object.values(memberStats).forEach(stat => {
+                const progress = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
+
+                legendHTML += `
+                    <tr>
+                        <td><strong>${stat.name}</strong></td>
+                        <td>${stat.total}</td>
+                        <td><span style="color: #10B981; font-weight: 600;">${stat.completed}</span></td>
+                        <td><span style="color: #F59E0B; font-weight: 600;">${stat.inProgress}</span></td>
+                        <td>
+                            <div class="mini-progress">
+                                <div class="mini-progress-bar">
+                                    <div class="mini-progress-fill" style="width: ${progress}%; background: ${progress === 100 ? '#10B981' : progress > 0 ? '#F59E0B' : '#6B7280'};"></div>
+                                </div>
+                                <span class="mini-progress-text">${progress}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            legendHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            legend.innerHTML = legendHTML;
+        }
+
+        function updateMembersDetailed() {
+            const membersDetailed = document.getElementById('membersDetailed');
+            const tasks = currentProject.tasks || [];
+            const members = currentProject.members || [];
+            const users = JSON.parse(localStorage.getItem('users') || []);
+
+            if (members.length === 0) {
+                membersDetailed.innerHTML = `
+                    <div class="empty-state-small">
                         <i class="fas fa-users"></i>
                         <p>Нет участников в проекте</p>
                     </div>
@@ -273,430 +408,592 @@
                 return;
             }
 
-            // Собираем статистику по участникам
-            const memberStats = {};
+            let html = '';
 
-            currentProject.members.forEach(member => {
-                memberStats[member] = {
-                    totalTasks: 0,
-                    completedTasks: 0,
-                    createdTasks: 0,
-                    updates: 0
-                };
-            });
+            members.forEach(memberEmail => {
+                // Получаем имя участника
+                let memberName = memberEmail;
+                let initials = 'U';
+                const user = users.find(u => u.email === memberEmail);
 
-            // Анализируем задачи
-            if (currentProject.tasks) {
-                currentProject.tasks.forEach(task => {
-                    // Создатель задачи (по умолчанию первый в assignees или автор проекта)
-                    if (task.assignees && task.assignees.length > 0) {
-                        const creator = task.assignees[0];
-                        if (memberStats[creator]) {
-                            memberStats[creator].createdTasks++;
-                        }
-                    }
-
-                    // Ответственные за задачи
-                    if (task.assignees) {
-                        task.assignees.forEach(assignee => {
-                            if (memberStats[assignee]) {
-                                memberStats[assignee].totalTasks++;
-                                if (task.completed) {
-                                    memberStats[assignee].completedTasks++;
-                                }
-                            }
-                        });
-                    }
-
-                    // Обновления (апдейты)
-                    if (task.updates) {
-                        task.updates.forEach(update => {
-                            // Находим участника по имени автора
-                            Object.keys(memberStats).forEach(member => {
-                                if (member.includes(update.author.split(' ')[0]) ||
-                                    update.author.includes(member.split(' ')[0])) {
-                                    memberStats[member].updates++;
-                                }
-                            });
-                        });
-                    }
-                });
-            }
-
-            // Преобразуем в массив и сортируем по количеству выполненных задач
-            const sortedMembers = Object.entries(memberStats)
-                .map(([member, stats]) => ({ member, ...stats }))
-                .sort((a, b) => b.completedTasks - a.completedTasks);
-
-            // Отображаем топ-5 участников
-            sortedMembers.slice(0, 5).forEach((stats, index) => {
-                const memberDiv = document.createElement('div');
-                memberDiv.className = 'member-stat-item';
-
-                let displayName = stats.member;
-                let initials = '';
-
-                if (stats.member.includes('@')) {
-                    const username = stats.member.split('@')[0];
-                    displayName = username.charAt(0).toUpperCase() + username.slice(1);
-                    initials = username.charAt(0).toUpperCase();
-                } else {
-                    const nameParts = stats.member.split(' ');
-                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                if (user) {
+                    memberName = `${user.firstName} ${user.lastName}`;
+                    initials = user.firstName.charAt(0).toUpperCase() + user.lastName.charAt(0).toUpperCase();
+                } else if (memberEmail.includes('@')) {
+                    const nameFromEmail = memberEmail.split('@')[0];
+                    memberName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+                    initials = memberName.charAt(0).toUpperCase();
                 }
 
-                const completionRate = stats.totalTasks > 0 ?
-                    Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0;
+                // Считаем задачи участника
+                const memberTasks = tasks.filter(t =>
+                    t.assignees && t.assignees.includes(memberEmail)
+                );
 
-                // Место в рейтинге
-                let rankClass = '';
-                if (index === 0) rankClass = 'gold';
-                else if (index === 1) rankClass = 'silver';
-                else if (index === 2) rankClass = 'bronze';
+                const totalTasks = memberTasks.length;
+                const completedTasks = memberTasks.filter(t => t.completed).length;
+                const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-                memberDiv.innerHTML = `
-                    <div class="member-rank ${rankClass}">${index + 1}</div>
-                    <div class="member-avatar">${initials}</div>
-                    <div class="member-info">
-                        <h5>${displayName}</h5>
-                        <div class="member-stats">
-                            <span>${stats.completedTasks}/${stats.totalTasks} задач</span>
-                            <span>${stats.updates} апдейтов</span>
+                // Получаем последнюю задачу участника
+                let lastTaskInfo = 'Нет задач';
+                if (totalTasks > 0) {
+                    const lastTask = memberTasks[memberTasks.length - 1];
+                    const taskStatus = lastTask.completed ? '✅' : '🔄';
+                    lastTaskInfo = `${taskStatus} ${lastTask.title}`;
+                }
+
+                html += `
+                    <div class="member-detailed-card">
+                        <div class="member-detailed-header">
+                            <div class="member-detailed-avatar">
+                                ${initials}
+                            </div>
+                            <div class="member-detailed-info">
+                                <h4>${memberName}</h4>
+                                <div class="member-email">${memberEmail}</div>
+                            </div>
+                            <div class="member-detailed-progress">
+                                <div class="progress-percent">${progress}%</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="member-progress">
-                        <div class="progress-bar small">
-                            <div class="progress" style="width: ${completionRate}%"></div>
+
+                        <div class="member-detailed-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">${totalTasks}</div>
+                                <div class="stat-label">Всего задач</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" style="color: #10B981;">${completedTasks}</div>
+                                <div class="stat-label">Выполнено</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" style="color: #F59E0B;">${totalTasks - completedTasks}</div>
+                                <div class="stat-label">В работе</div>
+                            </div>
                         </div>
-                        <span>${completionRate}%</span>
+
+                        <div class="progress-bar">
+                            <div class="progress" style="width: ${progress}%; background: ${progress === 100 ? '#10B981' : progress > 0 ? '#F59E0B' : '#6B7280'};"></div>
+                        </div>
+
+                        <div class="member-last-task">
+                            <i class="fas fa-tasks"></i>
+                            <span>${lastTaskInfo}</span>
+                        </div>
                     </div>
                 `;
-                membersContribution.appendChild(memberDiv);
             });
 
-            if (sortedMembers.length === 0) {
-                membersContribution.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-chart-bar"></i>
-                        <p>Недостаточно данных для статистики</p>
-                    </div>
-                `;
-            }
+            membersDetailed.innerHTML = html;
         }
 
-        function updateDetailedStats() {
-            const detailedStats = document.getElementById('detailedStats');
-            detailedStats.innerHTML = '';
+        function updateSectionTasksBreakdown() {
+            const sectionTasksBreakdown = document.getElementById('sectionTasksBreakdown');
+            const tasks = currentProject.tasks || [];
+            const sections = currentProject.sections || [];
 
-            if (!currentProject.tasks || currentProject.tasks.length === 0) {
-                detailedStats.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-list-alt"></i>
-                        <p>Нет задач для анализа</p>
+            if (sections.length === 0) {
+                sectionTasksBreakdown.innerHTML = `
+                    <div class="empty-state-small">
+                        <i class="fas fa-layer-group"></i>
+                        <p>Нет разделов в проекте</p>
                     </div>
                 `;
                 return;
             }
 
-            // Группируем задачи по статусу
-            const statusStats = {
-                completed: currentProject.tasks.filter(t => t.completed).length,
-                overdue: currentProject.tasks.filter(t => {
-                    if (t.completed || !t.deadline) return false;
-                    return new Date(t.deadline) < new Date();
-                }).length,
-                upcoming: currentProject.tasks.filter(t => {
-                    if (t.completed || !t.deadline) return false;
-                    const deadline = new Date(t.deadline);
-                    const now = new Date();
-                    const daysDiff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-                    return daysDiff <= 7 && daysDiff >= 0;
-                }).length,
-                noDeadline: currentProject.tasks.filter(t => !t.deadline && !t.completed).length
-            };
+            let html = '';
 
-            // Группируем по приоритету
-            const priorityStats = {
-                high: currentProject.tasks.filter(t => t.priority === 'high').length,
-                medium: currentProject.tasks.filter(t => !t.priority || t.priority === 'medium').length,
-                low: currentProject.tasks.filter(t => t.priority === 'low').length
-            };
+            sections.forEach(section => {
+                const sectionTasks = tasks.filter(t => t.section === section);
+                const totalTasks = sectionTasks.length;
+                const completedTasks = sectionTasks.filter(t => t.completed).length;
+                const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-            // Создаем элементы статистики
-            const statsHtml = `
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <h4>По статусу</h4>
-                        <ul class="stat-list">
-                            <li>
-                                <i class="fas fa-check-circle" style="color: #51cf66;"></i>
-                                <span>Выполнено:</span>
-                                <strong>${statusStats.completed}</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-exclamation-circle" style="color: #ff6b6b;"></i>
-                                <span>Просрочено:</span>
-                                <strong>${statusStats.overdue}</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-clock" style="color: #ff922b;"></i>
-                                <span>На этой неделе:</span>
-                                <strong>${statusStats.upcoming}</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-question-circle" style="color: #868e96;"></i>
-                                <span>Без дедлайна:</span>
-                                <strong>${statusStats.noDeadline}</strong>
-                            </li>
-                        </ul>
+                html += `
+                    <div class="section-breakdown-card">
+                        <div class="section-breakdown-header">
+                            <h4>${section}</h4>
+                            <div class="section-progress">${progress}%</div>
+                        </div>
+
+                        <div class="section-stats-row">
+                            <div class="stat-pair">
+                                <span class="stat-label">Всего задач:</span>
+                                <span class="stat-value">${totalTasks}</span>
+                            </div>
+                            <div class="stat-pair">
+                                <span class="stat-label">Выполнено:</span>
+                                <span class="stat-value" style="color: #10B981;">${completedTasks}</span>
+                            </div>
+                            <div class="stat-pair">
+                                <span class="stat-label">Осталось:</span>
+                                <span class="stat-value" style="color: #F59E0B;">${totalTasks - completedTasks}</span>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar">
+                            <div class="progress" style="width: ${progress}%; background: ${progress === 100 ? '#10B981' : progress > 0 ? '#F59E0B' : '#6B7280'};"></div>
+                        </div>
                     </div>
+                `;
+            });
 
-                    <div class="stat-box">
-                        <h4>По приоритету</h4>
-                        <ul class="stat-list">
-                            <li>
-                                <i class="fas fa-arrow-up" style="color: #ff6b6b;"></i>
-                                <span>Высокий:</span>
-                                <strong>${priorityStats.high}</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-minus" style="color: #ff922b;"></i>
-                                <span>Средний:</span>
-                                <strong>${priorityStats.medium}</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-arrow-down" style="color: #51cf66;"></i>
-                                <span>Низкий:</span>
-                                <strong>${priorityStats.low}</strong>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div class="stat-box">
-                        <h4>Продуктивность</h4>
-                        <ul class="stat-list">
-                            <li>
-                                <i class="fas fa-calendar-alt"></i>
-                                <span>Создан:</span>
-                                <strong>${currentProject.createdAt ?
-                                    new Date(currentProject.createdAt).toLocaleDateString('ru-RU') :
-                                    'Неизвестно'}</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-percentage"></i>
-                                <span>Общий прогресс:</span>
-                                <strong>${calculateProjectProgress()}%</strong>
-                            </li>
-                            <li>
-                                <i class="fas fa-chart-line"></i>
-                                <span>Темп выполнения:</span>
-                                <strong>${calculateCompletionRate()} задач/неделя</strong>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-
-            detailedStats.innerHTML = statsHtml;
+            sectionTasksBreakdown.innerHTML = html;
         }
 
-        function calculateProjectProgress() {
-            if (!currentProject.tasks || currentProject.tasks.length === 0) return 0;
-            const completed = currentProject.tasks.filter(task => task.completed).length;
-            return Math.round((completed / currentProject.tasks.length) * 100);
+        function updateProjectProgressInStorage() {
+            const tasks = currentProject.tasks || [];
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(t => t.completed).length;
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+            // Обновляем прогресс проекта в основном списке
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            if (projectIndex !== -1) {
+                projects[projectIndex].progress = progress;
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
         }
 
-        function calculateCompletionRate() {
-            if (!currentProject.createdAt || !currentProject.tasks) return '0';
+        function shareStatistics() {
+            const chats = JSON.parse(localStorage.getItem('projectChats') || '[]');
+            const projectChats = chats.filter(chat => chat.projectId === projectId);
 
-            const createdDate = new Date(currentProject.createdAt);
-            const now = new Date();
-            const weeksDiff = Math.max(1, Math.ceil((now - createdDate) / (1000 * 60 * 60 * 24 * 7)));
+            if (projectChats.length === 0) {
+                alert('Создайте чат для этого проекта, чтобы поделиться статистикой');
+                return;
+            }
 
-            const completedTasks = currentProject.tasks.filter(task => task.completed).length;
-            return (completedTasks / weeksDiff).toFixed(1);
-        }
+            let chatList = 'Выберите чат для отправки статистики:\n\n';
+            projectChats.forEach((chat, index) => {
+                chatList += `${index + 1}. ${chat.name}\n`;
+            });
 
-        function shareStats() {
-            // Обновляем сводку для отправки
-            const totalTasks = currentProject.tasks?.length || 0;
-            const completedTasks = currentProject.tasks?.filter(t => t.completed).length || 0;
-            const progress = calculateProjectProgress();
+            const choice = prompt(chatList + '\nВведите номер чата:');
+            if (choice && projectChats[parseInt(choice) - 1]) {
+                const selectedChat = projectChats[parseInt(choice) - 1];
 
-            document.getElementById('shareSummary').innerHTML = `
-                <strong>${currentProject.name}</strong><br>
-                Прогресс: ${progress}% (${completedTasks}/${totalTasks} задач)<br>
-                Участников: ${currentProject.members?.length || 0}<br>
-                Дедлайн: ${currentProject.deadline ?
-                    new Date(currentProject.deadline).toLocaleDateString('ru-RU') :
-                    'Не установлен'}
-            `;
+                // Создаем сообщение со статистикой
+                const tasks = currentProject.tasks || [];
+                const completedTasks = tasks.filter(t => t.completed).length;
+                const progress = Math.round((completedTasks / tasks.length) * 100);
 
-            document.getElementById('shareModal').style.display = 'block';
-        }
+                const statsMessage = `
+📊 *Статистика проекта "${currentProject.name}"*
 
-        function shareToChat(chatName) {
-            const totalTasks = currentProject.tasks?.length || 0;
-            const completedTasks = currentProject.tasks?.filter(t => t.completed).length || 0;
-            const progress = calculateProjectProgress();
-
-            // Формируем сообщение со статистикой
-            const message = `
-📊 *Статистика проекта: ${currentProject.name}*
-
-✅ Выполнено: ${completedTasks}/${totalTasks} задач
+✅ Выполнено: ${completedTasks}/${tasks.length} задач
 📈 Прогресс: ${progress}%
 👥 Участников: ${currentProject.members?.length || 0}
-⏰ Дедлайн: ${currentProject.deadline ?
-    new Date(currentProject.deadline).toLocaleDateString('ru-RU') :
-    'Не установлен'}
+📅 Дедлайн: ${new Date(currentProject.deadline).toLocaleDateString('ru-RU')}
 
-*Топ участники:*
-${getTopMembers(3)}
+_Статистика обновлена: ${new Date().toLocaleString('ru-RU')}_
+                `;
 
-Статистика отправлена из Research App
-            `;
+                alert(`Статистика отправлена в чат "${selectedChat.name}"`);
 
-            // В реальном приложении здесь был бы API вызов
-            alert(`Статистика отправлена в чат: "${chatName}"\n\n${message}`);
-
-            // Закрываем модальное окно
-            closeShareModal();
-
-            // Показываем подтверждение
-            showNotification('Статистика отправлена в ' + chatName);
-        }
-
-        function getTopMembers(limit) {
-            if (!currentProject.tasks || !currentProject.members) return 'Нет данных';
-
-            const memberStats = {};
-            currentProject.members.forEach(member => {
-                memberStats[member] = {
-                    completed: 0,
-                    total: 0
-                };
-            });
-
-            currentProject.tasks.forEach(task => {
-                if (task.assignees) {
-                    task.assignees.forEach(assignee => {
-                        if (memberStats[assignee]) {
-                            memberStats[assignee].total++;
-                            if (task.completed) {
-                                memberStats[assignee].completed++;
-                            }
-                        }
-                    });
-                }
-            });
-
-            const sorted = Object.entries(memberStats)
-                .map(([member, stats]) => ({ member, ...stats }))
-                .sort((a, b) => b.completed - a.completed)
-                .slice(0, limit);
-
-            return sorted.map((stats, index) => {
-                const name = stats.member.includes('@') ?
-                    stats.member.split('@')[0] :
-                    stats.member.split(' ')[0];
-                return `${index + 1}. ${name}: ${stats.completed}/${stats.total} задач`;
-            }).join('\n');
-        }
-
-        function closeShareModal() {
-            document.getElementById('shareModal').style.display = 'none';
-        }
-
-        function showNotification(message) {
-            // Создаем временное уведомление
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.textContent = message;
-            notification.style.cssText = `
-                position: fixed;
-                top: 80px;
-                right: 20px;
-                background: var(--success-color);
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                z-index: 1000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                animation: slideIn 0.3s ease;
-            `;
-
-            document.body.appendChild(notification);
-
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
+                // В реальном приложении здесь был бы запрос на отправку сообщения
+                // Сейчас просто создаем уведомление
+                const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+                notifications.unshift({
+                    id: Date.now(),
+                    type: 'system',
+                    title: 'Статистика отправлена',
+                    message: `Статистика проекта "${currentProject.name}" отправлена в чат "${selectedChat.name}"`,
+                    project: currentProject.name,
+                    time: new Date().toISOString(),
+                    read: false,
+                    action: `project-chats.html`
+                });
+                localStorage.setItem('notifications', JSON.stringify(notifications));
+            }
         }
     </script>
 
     <style>
-        .notification {
-            animation: slideIn 0.3s ease;
+        .stats-page {
+            padding-bottom: 100px;
         }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
+        .stat-card {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--border-color);
         }
-    </style>
-    <!-- Нижняя навигация -->
-    <nav class="bottom-nav">
-        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
-            <i class="fas fa-home nav-icon"></i>
-            <span class="nav-label">Главная</span>
-        </a>
 
-        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
-            <i class="fas fa-bell nav-icon"></i>
-            <span class="nav-label">Уведомления</span>
-            <span class="notification-badge" id="notificationCount"></span>
-        </a>
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
 
-        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
-            <i class="fas fa-phone-alt nav-icon"></i>
-            <span class="nav-label">Созвоны</span>
-        </a>
+        .stat-info {
+            flex: 1;
+        }
 
-        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
-            <i class="fas fa-comments nav-icon"></i>
-            <span class="nav-label">Чаты</span>
-        </a>
-    </nav>
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
 
-    <script>
-        // Функция для обновления бейджа уведомлений
-        function updateNotificationBadge() {
-            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-            const unreadCount = notifications.filter(n => !n.read).length;
-            const badge = document.getElementById('notificationCount');
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
 
-            if (badge) {
-                if (unreadCount > 0) {
-                    badge.textContent = unreadCount;
-                    badge.style.display = 'flex';
-                } else {
-                    badge.style.display = 'none';
-                }
+        .progress-section {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .progress-header h3 {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .progress-percentage {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .progress-bar-large {
+            height: 12px;
+            background: var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .progress-stats strong {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .chart-section {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-section h3 {
+            margin: 0 0 20px 0;
+            color: var(--text-color);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .chart-legend {
+            font-size: 14px;
+        }
+
+        .legend-table {
+            overflow-x: auto;
+        }
+
+        .legend-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .legend-table th {
+            text-align: left;
+            padding: 8px 12px;
+            font-weight: 600;
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .legend-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            color: var(--text-color);
+        }
+
+        .mini-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mini-progress-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .mini-progress-text {
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .section {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .section h3 {
+            margin: 0 0 20px 0;
+            color: var(--text-color);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .members-detailed {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .member-detailed-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .member-detailed-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .member-detailed-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .member-detailed-info {
+            flex: 1;
+        }
+
+        .member-detailed-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .member-email {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .member-detailed-progress {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .member-detailed-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .member-detailed-stats .stat-item {
+            text-align: center;
+        }
+
+        .member-detailed-stats .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .member-detailed-stats .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .member-last-task {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .section-tasks-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .section-breakdown-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .section-breakdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .section-breakdown-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .section-progress {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .section-stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .stat-pair {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-pair .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .stat-pair .stat-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .empty-state-small {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-small i {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-small p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .meeting-actions {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            right: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .member-detailed-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .section-stats-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .chart-container {
+                height: 250px;
             }
         }
-
-        // Вызываем при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            updateNotificationBadge();
-        });
-    </script>
+    </style>
 </body>
 </html>

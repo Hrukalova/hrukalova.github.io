@@ -113,38 +113,6 @@
                         <!-- Участники загрузятся через JS -->
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label>Тип чата</label>
-                    <div class="chat-type-selector">
-                        <label class="chat-type-option">
-                            <input type="radio" name="chatType" value="general" checked>
-                            <span class="chat-type-icon"><i class="fas fa-users"></i></span>
-                            <span class="chat-type-label">
-                                <strong>Общий чат</strong>
-                                <small>Все участники проекта</small>
-                            </span>
-                        </label>
-
-                        <label class="chat-type-option">
-                            <input type="radio" name="chatType" value="technical">
-                            <span class="chat-type-icon"><i class="fas fa-code"></i></span>
-                            <span class="chat-type-label">
-                                <strong>Технический</strong>
-                                <small>Технические вопросы</small>
-                            </span>
-                        </label>
-
-                        <label class="chat-type-option">
-                            <input type="radio" name="chatType" value="design">
-                            <span class="chat-type-icon"><i class="fas fa-paint-brush"></i></span>
-                            <span class="chat-type-label">
-                                <strong>Дизайн</strong>
-                                <small>Обсуждение дизайна</small>
-                            </span>
-                        </label>
-                    </div>
-                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('createChatModal')">
@@ -174,14 +142,7 @@
             // Фильтруем проекты, где текущий пользователь участник
             projects = projects.filter(project => {
                 if (!project.members) return false;
-                return project.members.some(member => {
-                    if (typeof member === 'string') {
-                        return member.includes(currentUser.firstName) ||
-                               member.includes(currentUser.lastName) ||
-                               member === currentUser.email;
-                    }
-                    return false;
-                });
+                return project.members.some(member => member === currentUser.email);
             });
 
             populateProjectSelect();
@@ -202,7 +163,7 @@
         function loadChats() {
             chats = JSON.parse(localStorage.getItem('projectChats') || '[]');
 
-            // Если чатов нет, создаем тестовые на основе проектов
+            // Если чатов нет, создаем простые тестовые
             if (chats.length === 0 && projects.length > 0) {
                 generateSampleChats();
             }
@@ -214,39 +175,79 @@
             const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 
             projects.forEach((project, index) => {
-                // Создаем общий чат для каждого проекта
+                // Создаем простой общий чат для каждого проекта
                 chats.push({
                     id: Date.now() + index,
                     name: `${project.name} - Общий чат`,
                     projectId: project.id,
                     projectName: project.name,
-                    type: 'general',
                     members: project.members || [],
-                    unread: Math.floor(Math.random() * 5),
+                    messages: [
+                        {
+                            id: 1,
+                            text: 'Привет всем! Начинаем работу над проектом.',
+                            author: 'Система',
+                            authorEmail: 'system@example.com',
+                            time: new Date(Date.now() - (2 * 24 * 60 * 60 * 1000)).toISOString(),
+                            type: 'system'
+                        },
+                        {
+                            id: 2,
+                            text: 'Кто будет заниматься дизайном?',
+                            author: currentUser.firstName,
+                            authorEmail: currentUser.email,
+                            time: new Date(Date.now() - (1 * 24 * 60 * 60 * 1000)).toISOString(),
+                            type: 'text'
+                        },
+                        {
+                            id: 3,
+                            text: 'Я могу взять дизайн. Есть какие-то требования?',
+                            author: 'Александр',
+                            authorEmail: 'alex@example.com',
+                            time: new Date(Date.now() - (12 * 60 * 60 * 1000)).toISOString(),
+                            type: 'text'
+                        }
+                    ],
+                    unread: index === 0 ? 1 : 0,
                     lastMessage: {
-                        text: index === 0 ? 'Когда будет готов прототип?' : 'Обсудим на следующем созвоне',
-                        author: index === 0 ? 'Александр' : 'Мария',
-                        time: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString()
-                    },
-                    online: Math.floor(Math.random() * (project.members?.length || 1)) + 1
+                        text: index === 0 ? 'Я могу взять дизайн. Есть какие-то требования?' : 'Начинаем работу',
+                        author: index === 0 ? 'Александр' : 'Система',
+                        time: new Date(Date.now() - (index * 2 * 60 * 60 * 1000)).toISOString()
+                    }
                 });
 
-                // Создаем технический чат для первого проекта
+                // Для первого проекта создаем дополнительный технический чат
                 if (index === 0) {
                     chats.push({
                         id: Date.now() + index + 100,
                         name: `${project.name} - Технический`,
                         projectId: project.id,
                         projectName: project.name,
-                        type: 'technical',
                         members: project.members ? project.members.slice(0, 3) : [],
-                        unread: 2,
+                        messages: [
+                            {
+                                id: 1,
+                                text: 'Обсуждаем здесь технические вопросы по проекту',
+                                author: 'Система',
+                                authorEmail: 'system@example.com',
+                                time: new Date(Date.now() - (3 * 24 * 60 * 60 * 1000)).toISOString(),
+                                type: 'system'
+                            },
+                            {
+                                id: 2,
+                                text: 'Какую БД будем использовать?',
+                                author: 'Сергей',
+                                authorEmail: 'sergey@example.com',
+                                time: new Date(Date.now() - (2 * 24 * 60 * 60 * 1000)).toISOString(),
+                                type: 'text'
+                            }
+                        ],
+                        unread: 0,
                         lastMessage: {
-                            text: 'Нужно обсудить архитектуру БД',
+                            text: 'Какую БД будем использовать?',
                             author: 'Сергей',
                             time: new Date(Date.now() - (2 * 24 * 60 * 60 * 1000)).toISOString()
-                        },
-                        online: 2
+                        }
                     });
                 }
             });
@@ -279,29 +280,19 @@
                 const project = projects.find(p => p.id === chat.projectId);
                 const timeAgo = getTimeAgo(new Date(chat.lastMessage.time));
 
-                // Определяем иконку по типу чата
-                let iconClass = 'fa-comments';
-                switch(chat.type) {
-                    case 'technical': iconClass = 'fa-code'; break;
-                    case 'design': iconClass = 'fa-paint-brush'; break;
-                    case 'general': iconClass = 'fa-users'; break;
-                }
-
                 chatItem.innerHTML = `
                     <div class="project-chat-icon">
-                        <i class="fas ${iconClass}"></i>
+                        <i class="fas fa-comments"></i>
                     </div>
                     <div class="project-chat-info">
                         <h3>${chat.name}</h3>
                         <div class="project-chat-meta">
-                            <span>${chat.projectName}</span>
-                            <span class="project-chat-members">
-                                <span class="member-dot"></span>
-                                ${chat.online} онлайн
-                            </span>
+                            <span class="project-name">${chat.projectName}</span>
+                            <span class="project-members-count">${chat.members.length} участников</span>
                         </div>
                         <div class="project-chat-last-message">
-                            ${chat.lastMessage.author}: ${chat.lastMessage.text}
+                            <span class="last-message-author">${chat.lastMessage.author}:</span>
+                            <span class="last-message-text">${chat.lastMessage.text}</span>
                         </div>
                     </div>
                     <div class="project-chat-right">
@@ -331,41 +322,82 @@
         }
 
         function openChat(chat) {
-            // В реальном приложении здесь была бы страница чата
-            // Сохраняем информацию о чате
-            sessionStorage.setItem('currentChat', JSON.stringify(chat));
-
             // Сбрасываем счетчик непрочитанных
             chat.unread = 0;
-            localStorage.setItem('projectChats', JSON.stringify(chats));
-            displayChats();
+            const chatIndex = chats.findIndex(c => c.id === chat.id);
+            if (chatIndex !== -1) {
+                chats[chatIndex].unread = 0;
+                localStorage.setItem('projectChats', JSON.stringify(chats));
+                displayChats();
+            }
 
-            // Показываем имитацию чата
-            simulateChatWindow(chat);
+            // Переходим на страницу чата
+            window.location.href = `chat-details.html?id=${chat.id}`;
         }
 
-        function simulateChatWindow(chat) {
-            const messages = [
-                { author: 'Вы', text: 'Привет всем!', time: '12:00' },
-                { author: 'Александр', text: 'Привет! Как дела с проектом?', time: '12:05' },
-                { author: 'Мария', text: 'У меня почти готово', time: '12:10' },
-                { author: 'Сергей', text: 'Нужно обсудить детали', time: '12:15' },
-            ];
-
+        function showSimpleChat(chat) {
             let chatWindow = `
                 Чат: ${chat.name}
+                Проект: ${chat.projectName}
                 Участников: ${chat.members.length}
 
-                История сообщений:
+                ==== История сообщений ====
+
             `;
 
-            messages.forEach(msg => {
-                chatWindow += `\n[${msg.time}] ${msg.author}: ${msg.text}`;
-            });
+            // Показываем последние 10 сообщений
+            const recentMessages = (chat.messages || []).slice(-10);
 
-            chatWindow += '\n\n---\nВ реальном приложении здесь будет полноценный интерфейс мессенджера';
+            if (recentMessages.length === 0) {
+                chatWindow += '\nПока нет сообщений\n';
+            } else {
+                recentMessages.forEach(msg => {
+                    const time = new Date(msg.time);
+                    const timeStr = time.toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    chatWindow += `\n[${timeStr}] ${msg.author}: ${msg.text}`;
+                });
+            }
 
-            alert(chatWindow);
+            chatWindow += '\n\n====================\n';
+
+            // Показываем окно с возможностью отправить сообщение
+            const userMessage = prompt(chatWindow + '\nВведите сообщение (или нажмите Отмена):');
+
+            if (userMessage !== null && userMessage.trim() !== '') {
+                // Добавляем сообщение
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+                if (!chat.messages) chat.messages = [];
+
+                chat.messages.push({
+                    id: Date.now(),
+                    text: userMessage.trim(),
+                    author: currentUser.firstName,
+                    authorEmail: currentUser.email,
+                    time: new Date().toISOString(),
+                    type: 'text'
+                });
+
+                // Обновляем последнее сообщение
+                chat.lastMessage = {
+                    text: userMessage.trim(),
+                    author: currentUser.firstName,
+                    time: new Date().toISOString()
+                };
+
+                // Сохраняем изменения
+                const chatIndex = chats.findIndex(c => c.id === chat.id);
+                if (chatIndex !== -1) {
+                    chats[chatIndex] = chat;
+                    localStorage.setItem('projectChats', JSON.stringify(chats));
+                    displayChats();
+                }
+
+                alert('Сообщение отправлено!');
+            }
         }
 
         function searchChats() {
@@ -374,8 +406,8 @@
 
             chatItems.forEach(item => {
                 const chatName = item.querySelector('h3').textContent.toLowerCase();
-                const projectName = item.querySelector('.project-chat-meta span').textContent.toLowerCase();
-                const lastMessage = item.querySelector('.project-chat-last-message').textContent.toLowerCase();
+                const projectName = item.querySelector('.project-name').textContent.toLowerCase();
+                const lastMessage = item.querySelector('.last-message-text').textContent.toLowerCase();
 
                 if (chatName.includes(searchTerm) ||
                     projectName.includes(searchTerm) ||
@@ -402,19 +434,25 @@
             const project = projects.find(p => p.id == projectId);
 
             if (project && project.members) {
-                project.members.forEach(member => {
+                const users = JSON.parse(localStorage.getItem('users') || []);
+
+                project.members.forEach(memberEmail => {
                     const userItem = document.createElement('div');
                     userItem.className = 'user-select-item';
 
-                    let displayName = member;
-                    if (member.includes('@')) {
-                        displayName = member.split('@')[0];
+                    // Находим пользователя для отображения имени
+                    let displayName = memberEmail;
+                    const user = users.find(u => u.email === memberEmail);
+                    if (user) {
+                        displayName = `${user.firstName} ${user.lastName}`;
+                    } else if (memberEmail.includes('@')) {
+                        displayName = memberEmail.split('@')[0];
                         displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
                     }
 
                     userItem.innerHTML = `
                         <label>
-                            <input type="checkbox" value="${member}" checked>
+                            <input type="checkbox" value="${memberEmail}" checked>
                             <span class="checkmark"></span>
                             <span class="user-name">
                                 <span class="user-avatar-small">${displayName.charAt(0)}</span>
@@ -430,7 +468,6 @@
         function saveNewChat() {
             const chatName = document.getElementById('chatName').value.trim();
             const projectId = document.getElementById('chatProject').value;
-            const chatType = document.querySelector('input[name="chatType"]:checked').value;
 
             if (!chatName || !projectId) {
                 alert('Заполните название и выберите проект');
@@ -450,20 +487,29 @@
             });
 
             // Создаем новый чат
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
             const newChat = {
                 id: Date.now(),
                 name: chatName,
                 projectId: projectId,
                 projectName: project.name,
-                type: chatType,
                 members: selectedMembers,
+                messages: [
+                    {
+                        id: 1,
+                        text: `Чат "${chatName}" создан`,
+                        author: 'Система',
+                        authorEmail: 'system@example.com',
+                        time: new Date().toISOString(),
+                        type: 'system'
+                    }
+                ],
                 unread: 0,
                 lastMessage: {
-                    text: 'Чат создан',
+                    text: `Чат "${chatName}" создан`,
                     author: 'Система',
                     time: new Date().toISOString()
                 },
-                online: 1,
                 createdAt: new Date().toISOString()
             };
 
@@ -478,7 +524,7 @@
             displayChats();
 
             // Показываем подтверждение
-            alert(`Чат "${chatName}" создан для проекта "${project.name}"\n\nУчастников: ${selectedMembers.length}`);
+            alert(`Чат "${chatName}" создан для проекта "${project.name}"`);
 
             // Сбрасываем форму
             document.getElementById('chatName').value = '';
@@ -504,62 +550,82 @@
     </script>
 
     <style>
-        .chat-type-selector {
+        .project-chats-list {
             display: flex;
             flex-direction: column;
             gap: 12px;
+            margin-top: 16px;
         }
 
-        .chat-type-option {
+        .project-chat-item {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 16px;
             display: flex;
+            gap: 16px;
             align-items: center;
-            gap: 12px;
-            padding: 12px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
+            border: 1px solid var(--border-color);
         }
 
-        .chat-type-option:hover {
-            border-color: var(--primary-color);
-            background: var(--hover-bg);
+        .project-chat-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        .chat-type-option input[type="radio"]:checked + .chat-type-icon {
+        .project-chat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--primary-light);
             color: var(--primary-color);
-        }
-
-        .chat-type-option input[type="radio"]:checked {
-            border-color: var(--primary-color);
-        }
-
-        .chat-type-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--hover-bg);
-            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            color: var(--text-secondary);
+            font-size: 20px;
+            flex-shrink: 0;
         }
 
-        .chat-type-label {
+        .project-chat-info {
             flex: 1;
+            min-width: 0;
         }
 
-        .chat-type-label strong {
-            display: block;
-            font-size: 14px;
-            margin-bottom: 2px;
+        .project-chat-info h3 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .chat-type-label small {
-            display: block;
+        .project-chat-meta {
+            display: flex;
+            gap: 12px;
             font-size: 12px;
             color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .project-name {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .project-chat-last-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .last-message-author {
+            font-weight: 500;
+            color: var(--text-color);
+            margin-right: 4px;
         }
 
         .project-chat-right {
@@ -567,11 +633,127 @@
             flex-direction: column;
             align-items: flex-end;
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .project-chat-time {
             font-size: 12px;
             color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .project-chat-unread {
+            background: var(--primary-color);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* Стили для модального окна */
+        .members-select {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .user-select-item {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .user-select-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-select-item label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .user-select-item input {
+            display: none;
+        }
+
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .user-select-item input:checked + .checkmark {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .user-select-item input:checked + .checkmark:after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+        }
+
+        .user-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-avatar-small {
+            width: 24px;
+            height: 24px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 12px 12px 44px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            color: var(--text-color);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
         }
     </style>
 </body>

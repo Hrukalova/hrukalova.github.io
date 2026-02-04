@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить задачу</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+
+    <header class="header">
+        <a href="javascript:window.history.back()" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-title">
+            <h1>Добавить задачу</h1>
+        </div>
+        <div class="header-actions"></div>
+    </header>
+
+    <main class="container create-tasks">
+        <form id="taskForm">
+            <div class="form-section">
+                <h2>Название задачи</h2>
+                <input type="text"
+                       id="taskName"
+                       class="form-input"
+                       placeholder="Например: Сделать макет главной страницы"
+                       required>
+            </div>
+
+            <div class="form-section">
+                <h2>Раздел проекта</h2>
+                <select id="taskSection" class="form-input" required>
+                    <option value="">Выберите раздел</option>
+                    <!-- Разделы загрузятся через JS -->
+                </select>
+            </div>
+
+            <div class="form-section">
+                <h2>Исполнители</h2>
+                <div class="members-selection" id="responsibleMembers">
+                    <!-- Участники загрузятся через JS -->
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Дедлайн</h2>
+                <div class="deadline-input">
+                    <input type="date" id="taskDate" class="form-input" required>
+                    <input type="time" id="taskTime" class="form-input" value="12:00">
+                </div>
+                <p class="form-hint" id="deadlineHint">Выберите дату</p>
+            </div>
+
+            <div class="form-section">
+                <h2>Описание</h2>
+                <textarea id="taskDescription" class="form-input textarea"
+                          rows="4"
+                          placeholder="Детали задачи..."></textarea>
+            </div>
+
+            <div class="form-section">
+                <h2>Приоритет</h2>
+                <div class="priority-buttons">
+                    <button type="button" class="priority-btn low" onclick="setPriority('low')">
+                        <i class="fas fa-arrow-down"></i> Низкий
+                    </button>
+                    <button type="button" class="priority-btn medium active" onclick="setPriority('medium')">
+                        <i class="fas fa-minus"></i> Средний
+                    </button>
+                    <button type="button" class="priority-btn high" onclick="setPriority('high')">
+                        <i class="fas fa-arrow-up"></i> Высокий
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveTask()">
+                    <i class="fas fa-check"></i> Сохранить задачу
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        let currentProject = null;
+        let projectId = null;
+        let selectedPriority = 'medium';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Получаем ID проекта из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = parseInt(urlParams.get('projectId'));
+
+            if (!projectId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            loadProject();
+        });
+
+        function loadProject() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            currentProject = projects.find(p => p.id === projectId);
+
+            if (!currentProject) {
+                alert('Проект не найден');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // Загружаем разделы
+            loadSections();
+
+            // Загружаем участников
+            loadMembers();
+
+            // Настраиваем дату
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            document.getElementById('taskDate').value = tomorrow.toISOString().split('T')[0];
+            document.getElementById('taskDate').min = today.toISOString().split('T')[0];
+            updateDeadlineHint();
+
+            document.getElementById('taskDate').addEventListener('change', updateDeadlineHint);
+        }
+
+        function loadSections() {
+            const sectionSelect = document.getElementById('taskSection');
+
+            if (!currentProject.sections || currentProject.sections.length === 0) {
+                sectionSelect.innerHTML = `
+                    <option value="">В проекте нет разделов</option>
+                    <option value="Без раздела">Без раздела</option>
+                `;
+                return;
+            }
+
+            currentProject.sections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section;
+                option.textContent = section;
+                sectionSelect.appendChild(option);
+            });
+
+            // Добавляем опцию "Без раздела"
+            const noSectionOption = document.createElement('option');
+            noSectionOption.value = 'Без раздела';
+            noSectionOption.textContent = 'Без раздела';
+            sectionSelect.appendChild(noSectionOption);
+        }
+
+        function loadMembers() {
+            const membersContainer = document.getElementById('responsibleMembers');
+            membersContainer.innerHTML = '';
+
+            const members = currentProject.members || [];
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (members.length === 0) {
+                membersContainer.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                        <i class="fas fa-users" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p>В проекте нет участников</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Добавляем текущего пользователя первым
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'member-checkbox active';
+            memberDiv.innerHTML = `
+                <span class="member-avatar">
+                    ${currentUser.firstName.charAt(0).toUpperCase()}
+                </span>
+                <span class="member-name">
+                    ${currentUser.firstName} ${currentUser.lastName} (Вы)
+                </span>
+                <i class="fas fa-check"></i>
+                <input type="hidden" value="${currentUser.email}">
+            `;
+            memberDiv.onclick = function() {
+                // Нельзя отменить выбор себя
+            };
+            membersContainer.appendChild(memberDiv);
+
+            // Добавляем остальных участников
+            members.forEach(member => {
+                if (member !== currentUser.email) {
+                    const memberDiv = document.createElement('div');
+                    memberDiv.className = 'member-checkbox';
+
+                    let displayName = member;
+                    let initials = 'U';
+
+                    if (member.includes('@')) {
+                        const foundUser = users.find(u => u.email === member);
+                        if (foundUser) {
+                            displayName = `${foundUser.firstName} ${foundUser.lastName}`;
+                            initials = foundUser.firstName.charAt(0).toUpperCase() +
+                                      foundUser.lastName.charAt(0).toUpperCase();
+                        } else {
+                            const nameFromEmail = member.split('@')[0];
+                            displayName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+                            initials = displayName.charAt(0).toUpperCase();
+                        }
+                    }
+
+                    memberDiv.innerHTML = `
+                        <span class="member-avatar">${initials}</span>
+                        <span class="member-name">${displayName}</span>
+                        <i class="fas fa-check"></i>
+                        <input type="hidden" value="${member}">
+                    `;
+
+                    memberDiv.onclick = function() {
+                        this.classList.toggle('active');
+                    };
+
+                    membersContainer.appendChild(memberDiv);
+                }
+            });
+        }
+
+        function updateDeadlineHint() {
+            const dateVal = document.getElementById('taskDate').value;
+            if (dateVal) {
+                const date = new Date(dateVal);
+                document.getElementById('deadlineHint').textContent =
+                    date.toLocaleDateString('ru-RU', {
+                        day: 'numeric', month: 'long', year: 'numeric'
+                    });
+            }
+        }
+
+        function setPriority(priority) {
+            selectedPriority = priority;
+
+            // Обновляем кнопки
+            document.querySelectorAll('.priority-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.querySelector(`.priority-btn.${priority}`).classList.add('active');
+        }
+
+        function saveTask() {
+            // Проверяем обязательные поля
+            const taskName = document.getElementById('taskName').value.trim();
+            const taskSection = document.getElementById('taskSection').value;
+
+            if (!taskName) {
+                alert('Введите название задачи');
+                return;
+            }
+
+            if (!taskSection) {
+                alert('Выберите раздел для задачи');
+                return;
+            }
+
+            // Собираем выбранных исполнителей
+            const selectedMembers = [];
+            document.querySelectorAll('.member-checkbox.active input').forEach(input => {
+                selectedMembers.push(input.value);
+            });
+
+            // Если никто не выбран, назначаем текущего пользователя
+            if (selectedMembers.length === 0) {
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                selectedMembers.push(currentUser.email);
+            }
+
+            // Создаем задачу
+            const task = {
+                id: Date.now(),
+                title: taskName,
+                description: document.getElementById('taskDescription').value,
+                deadline: document.getElementById('taskDate').value + 'T' +
+                         document.getElementById('taskTime').value,
+                assignees: selectedMembers,
+                section: taskSection === 'Без раздела' ? '' : taskSection,
+                priority: selectedPriority,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+
+            // Добавляем задачу в проект
+            if (!currentProject.tasks) {
+                currentProject.tasks = [];
+            }
+
+            currentProject.tasks.push(task);
+
+            // Сохраняем изменения
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            if (projectIndex !== -1) {
+                projects[projectIndex].tasks = currentProject.tasks;
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
+
+            // Создаем уведомление
+            createTaskNotification(task);
+
+            // Возвращаемся на страницу проекта
+            alert('Задача добавлена!');
+            window.location.href = `project-details.html?id=${projectId}`;
+        }
+
+        function createTaskNotification(task) {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            // Создаем уведомления для всех исполнителей
+            task.assignees.forEach(assignee => {
+                if (assignee !== currentUser.email) {
+                    notifications.unshift({
+                        id: Date.now() + Math.random(),
+                        type: 'task',
+                        title: 'Новая задача',
+                        message: `${currentUser.firstName} назначил(а) вам задачу "${task.title}"`,
+                        project: currentProject.name,
+                        time: new Date().toISOString(),
+                        read: false,
+                        action: `task-details.html?projectId=${projectId}&taskId=${task.id}`
+                    });
+                }
+            });
+
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+        }
+    </script>
+
+    <style>
+        .priority-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .priority-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--surface-color);
+            color: var(--text-color);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .priority-btn:hover {
+            border-color: var(--primary-color);
+        }
+
+        .priority-btn.active {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .priority-btn.low.active {
+            border-color: #10B981;
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .priority-btn.medium.active {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .priority-btn.high.active {
+            border-color: #EF4444;
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .member-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--border-color);
+            border-radius: 10px;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+            margin-bottom: 8px;
+        }
+
+        .member-checkbox.active {
+            background: var(--primary-color);
+            border-color: var(--primary-light);
+            color: white;
+        }
+
+        .member-checkbox .member-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .member-checkbox.active .member-avatar {
+            background: white;
+            color: var(--primary-color);
+        }
+
+        .member-checkbox .member-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .member-checkbox .fa-check {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .member-checkbox.active .fa-check {
+            opacity: 1;
+        }
+    </style>
+</body>
+</html>

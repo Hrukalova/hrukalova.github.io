@@ -60,66 +60,75 @@
     </main>
 
     <script>
-        // Получаем текущего пользователя
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        // Загружаем временный проект
         let tempProject = JSON.parse(sessionStorage.getItem('tempProject') || '{}');
 
-        // Если нет участников, добавляем текущего пользователя
+        // Если список участников пуст, инициализируем его с админом
         if (!tempProject.members) {
-            tempProject.members = [currentUser.firstName + ' ' + currentUser.lastName];
-            sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
+            tempProject.members = [currentUser.email];
+        } else {
+            // Если массив есть, убедимся, что админ там есть
+            if (!tempProject.members.includes(currentUser.email)) {
+                tempProject.members.unshift(currentUser.email);
+            }
         }
 
-        // Загружаем существующих участников
         document.addEventListener('DOMContentLoaded', function() {
-            loadMembers();
+            renderMembersList();
 
-            // Автозаполнение при нажатии Enter
+            // Enter работает как кнопка добавления
             document.getElementById('memberEmail').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addMember();
-                }
+                if (e.key === 'Enter') addMember();
             });
         });
 
-        function loadMembers() {
+        function renderMembersList() {
             const membersList = document.getElementById('membersList');
             membersList.innerHTML = '';
 
-            // Всегда показываем текущего пользователя первым
-            const currentUserFullName = currentUser.firstName + ' ' + currentUser.lastName;
-            const currentUserInitials = currentUser.firstName.charAt(0) + currentUser.lastName.charAt(0);
-
-            if (!tempProject.members.includes(currentUserFullName)) {
-                tempProject.members.unshift(currentUserFullName);
-            }
-
-            tempProject.members.forEach((member, index) => {
-                // Генерируем имя из email если нужно
+            tempProject.members.forEach((member) => {
+                // --- УЛУЧШЕННАЯ ЛОГИКА ОТОБРАЖЕНИЯ ИМЕНИ ---
                 let displayName = member;
-                let initials = '';
+                let initials = 'U';
 
-                if (member.includes('@')) {
-                    // Если это email, создаем имя
-                    const username = member.split('@')[0];
-                    displayName = username.charAt(0).toUpperCase() + username.slice(1) + ' (по почте)';
-                    initials = username.charAt(0).toUpperCase();
-                } else {
-                    // Если это уже имя
-                    const nameParts = member.split(' ');
-                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                // Если это текущий пользователь
+                if (member === currentUser.email) {
+                    displayName = `${currentUser.firstName} ${currentUser.lastName} (Вы)`;
+                    initials = currentUser.firstName.charAt(0).toUpperCase() +
+                            currentUser.lastName.charAt(0).toUpperCase();
                 }
+                // Если это email, пытаемся найти в зарегистрированных пользователях
+                else if (member.includes('@')) {
+                    const users = JSON.parse(localStorage.getItem('users') || '[]');
+                    const foundUser = users.find(u => u.email === member);
+
+                    if (foundUser) {
+                        // Нашли зарегистрированного пользователя
+                        displayName = `${foundUser.firstName} ${foundUser.lastName}`;
+                        initials = foundUser.firstName.charAt(0).toUpperCase() +
+                                foundUser.lastName.charAt(0).toUpperCase();
+                    } else {
+                        // Не нашли в базе - показываем имя из email
+                        const clean = member.split('@')[0];
+                        displayName = clean.charAt(0).toUpperCase() + clean.slice(1);
+                        initials = displayName.charAt(0).toUpperCase();
+                    }
+                } else {
+                    // Уже имя (например, "Иван Петров")
+                    displayName = member;
+                    const nameParts = member.split(' ');
+                    initials = nameParts.map(part => part.charAt(0).toUpperCase()).join('').slice(0, 2);
+                }
+                // -------------------------------
 
                 const memberItem = document.createElement('div');
                 memberItem.className = 'member-item';
                 memberItem.innerHTML = `
                     <span class="member-avatar">${initials}</span>
                     <span class="member-name">${displayName}</span>
-                    ${index > 0 ? `<button class="remove-member" onclick="removeMember('${member}')">
-                        <i class="fas fa-times"></i>
-                    </button>` : ''}
+                    ${member !== currentUser.email ?
+                        `<button class="remove-member" onclick="removeMember('${member}')"><i class="fas fa-times"></i></button>`
+                        : ''}
                 `;
                 membersList.appendChild(memberItem);
             });
@@ -129,72 +138,69 @@
             const emailInput = document.getElementById('memberEmail');
             const email = emailInput.value.trim();
 
-            if (email && validateEmail(email)) {
-                if (!tempProject.members.some(m => m === email || m.includes(email))) {
+            if (email && email.includes('@')) {
+                if (!tempProject.members.includes(email)) {
                     tempProject.members.push(email);
                     sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
-                    loadMembers();
+
+                    // Добавляем участника в чат
+                    addMemberToChat(email);
+
+                    renderMembersList();
                     emailInput.value = '';
                 } else {
-                    alert('Этот участник уже добавлен');
+                    alert('Участник уже добавлен');
                 }
             } else {
-                alert('Пожалуйста, введите корректный email');
+                alert('Введите корректный email');
             }
         }
 
-        function removeMember(memberToRemove) {
-            // Не позволяем удалить себя
-            const currentUserFullName = currentUser.firstName + ' ' + currentUser.lastName;
-            if (memberToRemove === currentUserFullName) {
-                alert('Вы не можете удалить себя из проекта');
-                return;
-            }
-
-            tempProject.members = tempProject.members.filter(member => member !== memberToRemove);
+        function removeMember(email) {
+            tempProject.members = tempProject.members.filter(m => m !== email);
             sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
-            loadMembers();
+            renderMembersList();
         }
 
         function saveMembers() {
-            // Сохраняем обновленный проект
             sessionStorage.setItem('tempProject', JSON.stringify(tempProject));
-
-            // Также сохраняем участников в глобальный список пользователей
-            updateGlobalUsersList();
-
-            // Переходим к созданию разделов
             window.location.href = 'create-sections.html';
         }
 
-        function validateEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        }
+        function addMemberToChat(email) {
+            // Находим основной чат проекта
+            const chats = JSON.parse(localStorage.getItem('projectChats') || '[]');
+            const projectChat = chats.find(c =>
+                c.projectId === tempProject.id && c.isMainChat
+            );
 
-        function updateGlobalUsersList() {
-            // Загружаем существующих пользователей
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            if (projectChat) {
+                // Добавляем участника в чат если его там нет
+                if (!projectChat.members.includes(email)) {
+                    projectChat.members.push(email);
 
-            // Добавляем новых участников как пользователей
-            tempProject.members.forEach(member => {
-                if (member.includes('@')) {
-                    // Ищем пользователя по email
-                    const existingUser = users.find(u => u.email === member);
-                    if (!existingUser) {
-                        // Создаем нового пользователя
-                        const username = member.split('@')[0];
-                        users.push({
-                            id: Date.now() + Math.random(),
-                            firstName: username.charAt(0).toUpperCase() + username.slice(1),
-                            lastName: 'Участник',
-                            email: member,
-                            avatar: username.charAt(0).toUpperCase()
-                        });
+                    // Добавляем системное сообщение
+                    const users = JSON.parse(localStorage.getItem('users') || '[]');
+                    const user = users.find(u => u.email === email);
+                    const userName = user ? `${user.firstName} ${user.lastName}` : email.split('@')[0];
+
+                    projectChat.messages.push({
+                        id: Date.now(),
+                        text: `${userName} присоединился к проекту`,
+                        author: 'Система',
+                        authorEmail: 'system@example.com',
+                        time: new Date().toISOString(),
+                        type: 'system'
+                    });
+
+                    // Обновляем в localStorage
+                    const chatIndex = chats.findIndex(c => c.id === projectChat.id);
+                    if (chatIndex !== -1) {
+                        chats[chatIndex] = projectChat;
+                        localStorage.setItem('projectChats', JSON.stringify(chats));
                     }
                 }
-            });
-
-            localStorage.setItem('users', JSON.stringify(users));
+            }
         }
     </script>
 </body>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Создать проект</title>
     <link rel="stylesheet" href="css/style.css">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -86,13 +87,52 @@
                 members: [currentUser.email],
                 sections: [],
                 tasks: [],
-                progress: 0
+                progress: 0,
+                createdAt: new Date().toISOString()
             };
 
             sessionStorage.setItem('tempProject', JSON.stringify(projectData));
 
+            // Автоматически создаем чат для проекта
+            createProjectChat(projectData);
+
             // Переходим к добавлению участников
             window.location.href = 'add-members.html';
+        }
+
+        function createProjectChat(projectData) {
+            const chats = JSON.parse(localStorage.getItem('projectChats') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            // Создаем основной чат проекта
+            const mainChat = {
+                id: Date.now(),
+                name: `${projectData.name} - Общий чат`,
+                projectName: projectData.name,
+                projectId: null, // Будет установлен после сохранения проекта
+                members: [currentUser.email],
+                messages: [
+                    {
+                        id: 1,
+                        text: `Проект "${projectData.name}" создан. Добро пожаловать!`,
+                        author: 'Система',
+                        authorEmail: 'system@example.com',
+                        time: new Date().toISOString(),
+                        type: 'system'
+                    }
+                ],
+                unread: 0,
+                lastMessage: {
+                    text: `Проект "${projectData.name}" создан`,
+                    author: 'Система',
+                    time: new Date().toISOString()
+                },
+                isMainChat: true,
+                createdAt: new Date().toISOString()
+            };
+
+            // Сохраняем во временное хранилище
+            sessionStorage.setItem('tempProjectChat', JSON.stringify(mainChat));
         }
 
         // Устанавливаем минимальную дау (сегодня)

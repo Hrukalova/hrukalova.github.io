@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить участника</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+        if (settings.darkTheme) {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+
+    <header class="header">
+        <a href="javascript:window.history.back()" class="icon-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-title">
+            <h1>Добавить участника</h1>
+        </div>
+        <div class="header-actions"></div>
+    </header>
+
+    <main class="container add-members">
+        <div class="form-section">
+            <h2>Добавить участника в проект</h2>
+            <p id="projectName" style="color: var(--text-secondary); margin-bottom: 20px;"></p>
+
+            <div class="members-input-container">
+                <input type="email"
+                       id="memberEmail"
+                       placeholder="Введите email участника"
+                       class="form-input">
+                <button type="button" class="btn btn-small" onclick="addMember()">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <div class="members-list" id="membersList">
+                <!-- Текущие участники будут отображаться здесь -->
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                Отмена
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveAndReturn()">
+                <i class="fas fa-check"></i> Сохранить и вернуться
+            </button>
+        </div>
+    </main>
+
+    <script>
+        let currentProject = null;
+        let projectId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Получаем ID проекта из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = parseInt(urlParams.get('projectId'));
+
+            if (!projectId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            loadProject();
+        });
+
+        function loadProject() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            currentProject = projects.find(p => p.id === projectId);
+
+            if (!currentProject) {
+                alert('Проект не найден');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // Показываем название проекта
+            document.getElementById('projectName').textContent =
+                `Проект: ${currentProject.name}`;
+
+            // Отображаем текущих участников
+            displayCurrentMembers();
+        }
+
+        function displayCurrentMembers() {
+            const membersList = document.getElementById('membersList');
+            const members = currentProject.members || [];
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (members.length === 0) {
+                membersList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                        <i class="fas fa-users" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p>В проекте пока нет участников</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+
+            members.forEach(member => {
+                let displayName = member;
+                let initials = 'U';
+
+                if (member === currentUser.email) {
+                    displayName = `${currentUser.firstName} ${currentUser.lastName} (Вы)`;
+                    initials = currentUser.firstName.charAt(0).toUpperCase() +
+                              currentUser.lastName.charAt(0).toUpperCase();
+                } else if (member.includes('@')) {
+                    const foundUser = users.find(u => u.email === member);
+                    if (foundUser) {
+                        displayName = `${foundUser.firstName} ${foundUser.lastName}`;
+                        initials = foundUser.firstName.charAt(0).toUpperCase() +
+                                  foundUser.lastName.charAt(0).toUpperCase();
+                    } else {
+                        const clean = member.split('@')[0];
+                        displayName = clean.charAt(0).toUpperCase() + clean.slice(1);
+                        initials = displayName.charAt(0).toUpperCase();
+                    }
+                }
+
+                html += `
+                    <div class="member-item">
+                        <span class="member-avatar">${initials}</span>
+                        <span class="member-name">${displayName}</span>
+                        ${member !== currentUser.email ?
+                            `<button class="remove-member" onclick="removeMember('${member}')">
+                                <i class="fas fa-times"></i>
+                            </button>` : ''}
+                    </div>
+                `;
+            });
+
+            membersList.innerHTML = html;
+        }
+
+        function addMember() {
+            const emailInput = document.getElementById('memberEmail');
+            const email = emailInput.value.trim();
+
+            if (!email || !email.includes('@')) {
+                alert('Введите корректный email');
+                return;
+            }
+
+            // Проверяем, не добавлен ли уже участник
+            if (currentProject.members.includes(email)) {
+                alert('Этот участник уже добавлен в проект');
+                emailInput.value = '';
+                return;
+            }
+
+            // Добавляем участника
+            currentProject.members.push(email);
+
+            // Очищаем поле ввода
+            emailInput.value = '';
+
+            // Обновляем список
+            displayCurrentMembers();
+
+            // Показываем сообщение
+            alert('Участник добавлен!');
+        }
+
+        function removeMember(email) {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            // Нельзя удалить себя
+            if (email === currentUser.email) {
+                alert('Вы не можете удалить себя из проекта');
+                return;
+            }
+
+            if (confirm('Удалить этого участника из проекта?')) {
+                currentProject.members = currentProject.members.filter(m => m !== email);
+                displayCurrentMembers();
+                alert('Участник удален');
+            }
+        }
+
+        function saveAndReturn() {
+            // Сохраняем изменения
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            if (projectIndex !== -1) {
+                projects[projectIndex].members = currentProject.members;
+                localStorage.setItem('projects', JSON.stringify(projects));
+            }
+
+            // Возвращаемся на страницу проекта
+            window.location.href = `project-details.html?id=${projectId}`;
+        }
+    </script>
+</body>
+</html>

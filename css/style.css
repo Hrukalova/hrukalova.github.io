@@ -6,48 +6,62 @@
 }
 
 :root {
-    /* Светлая тема (синяя) */
-    --primary-color: #2c5282;
-    --primary-light: #4299e1;
-    --secondary-color: #1a365d;
-    --background-color: #f0f8ff;
-    --surface-color: #ffffff;
-    --text-color: #2d3748;
-    --text-secondary: #718096;
-    --border-color: #e2e8f0;
-    --success-color: #38a169;
-    --warning-color: #d69e2e;
-    --danger-color: #e53e3e;
-    --accent-color: #805ad5;
+    /* --- Светлая тема (Professional Indigo) --- */
 
-    /* Цвета для проектов */
-    --project-card-bg: #ffffff;
-    --project-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --button-primary: #2c5282;
-    --button-primary-hover: #2b6cb0;
-    --avatar-bg: #4299e1;
+    /* Основные цвета */
+    --primary-color: #4F46E5;       /* Яркий Индиго */
+    --primary-light: #EEF2FF;       /* Очень светлый фон для иконок */
+    --secondary-color: #312E81;     /* Темно-синий для акцентов */
+
+    /* Фон и текст */
+    --background-color: #F3F4F6;    /* Светло-серый, чтобы глаза не уставали от белого */
+    --surface-color: #FFFFFF;       /* Чисто белый для карточек */
+    --text-color: #111827;          /* Почти черный (мягкий) */
+    --text-secondary: #4B5563;      /* Серый для подписей */
+    --border-color: #E5E7EB;        /* Еле заметные границы */
+
+    /* Статусы (яркие и понятные) */
+    --success-color: #059669;       /* Изумрудный */
+    --warning-color: #D97706;       /* Янтарный */
+    --danger-color: #DC2626;        /* Красный */
+    --accent-color: #F43F5E;        /* Розовый коралл (для важных кнопок) */
+
+    /* Специальные переменные проекта */
+    --project-card-bg: #FFFFFF;
+    /* Тень стала мягче и "дороже" */
+    --project-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --button-primary: #4F46E5;
+    --button-primary-hover: #4338CA;
+    --avatar-bg: #6366F1;
 }
 
 body.dark-theme {
-    /* Темная кофейная тема */
-    --primary-color: #8abddf;
-    --primary-light: #1a5e6a;
-    --secondary-color: #10796c;
-    --background-color: #0b0300;
-    --surface-color: #2f1703;
-    --text-color: #faf2e3;
-    --text-secondary: #f5d1a1;
-    --border-color: #78787a;
-    --success-color: #8fbc8f;
-    --warning-color: #fc532d;
-    --danger-color: #d80606;
-    --accent-color: #eec3a3;
+    /* --- Темная тема (Midnight Slate) --- */
 
-    --project-card-bg: #281302;
-    --project-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --button-primary: #f5efaf;
-    --button-primary-hover: #fa9e2f;
-    --avatar-bg: #A0522D;
+    /* Основные цвета (светлее, чтобы читалось на темном) */
+    --primary-color: #818CF8;
+    --primary-light: #1E293B;       /* Фон кнопок в темной теме */
+    --secondary-color: #C7D2FE;
+
+    /* Фон и текст */
+    --background-color: #0F172A;    /* Глубокий темно-синий (не черный!) */
+    --surface-color: #1E293B;       /* Чуть светлее для карточек */
+    --text-color: #F8FAFC;          /* Почти белый */
+    --text-secondary: #94A3B8;      /* Светло-серый */
+    --border-color: #334155;        /* Темные границы */
+
+    /* Статусы (пастельные, чтобы не резало глаза) */
+    --success-color: #34D399;
+    --warning-color: #FBBF24;
+    --danger-color: #F87171;
+    --accent-color: #FB7185;
+
+    /* Специальные переменные проекта */
+    --project-card-bg: #1E293B;
+    --project-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); /* Глубокая тень */
+    --button-primary: #6366F1;
+    --button-primary-hover: #818CF8;
+    --avatar-bg: #4F46E5;
 }
 
 body {
@@ -56,12 +70,6 @@ body {
     color: var(--text-color);
     line-height: 1.6;
     transition: background-color 0.3s, color 0.3s;
-}
-
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
 }
 
 /* Страница авторизации */
@@ -2335,19 +2343,36 @@ select.form-input {
     }
 }
 
-/* Bottom Navigation */
+/* Нижняя навигация - исправляем перекрытие */
 .bottom-nav {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--card-bg);
+    background: var(--surface-color);
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: space-around;
     padding: 12px 0;
     z-index: 1000;
     backdrop-filter: blur(10px);
+    background: rgba(var(--surface-color-rgb, 255, 255, 255), 0.95);
+}
+
+.dark-theme .bottom-nav {
+    background: rgba(var(--surface-color-rgb, 30, 41, 59), 0.95);
+}
+
+/* Основной контейнер - добавляем отступ снизу для навигации */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-bottom: 80px; /* Отступ для нижней навигации */
+}
+
+.auth-page .container {
+    padding-bottom: 20px;
 }
 
 .nav-item {
@@ -2402,15 +2427,6 @@ select.form-input {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-}
-
-/* Adjust main container for bottom nav */
-.container {
-    padding-bottom: 70px;
-}
-
-.auth-page .container {
-    padding-bottom: 20px;
 }
 
 /* Meetings Page */
@@ -2841,4 +2857,1112 @@ select.form-input {
     justify-content: center;
     font-size: 12px;
     font-weight: bold;
+}
+/* Кнопка статистики (Оранжевая) */
+.stats-banner {
+    background: #FF4500; /* Яркий оранжевый */
+    color: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(255, 69, 0, 0.3);
+    transition: transform 0.2s;
+}
+
+.stats-banner:hover {
+    transform: scale(1.02);
+}
+
+/* Стили для страницы деталей задачи */
+.task-tabs {
+    margin: 0;
+    padding: 0 20px;
+    background: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab-content {
+    display: none;
+    padding: 24px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.task-info {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.info-label {
+    width: 120px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-value {
+    flex: 1;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.task-description-box {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.task-description-box h3 {
+    margin: 0 0 16px 0;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+/* Стили для обновлений */
+.updates-list {
+    margin-bottom: 32px;
+}
+
+.update-item {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+}
+
+.update-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.update-author {
+    font-weight: 500;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.update-time {
+    color: var(--text-secondary);
+}
+
+.update-text {
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
+.empty-updates, .empty-files {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-updates i, .empty-files i {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+/* Стили для файлов */
+.files-list {
+    margin-bottom: 32px;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    gap: 16px;
+}
+
+.file-icon {
+    font-size: 24px;
+    color: var(--primary-color);
+    width: 40px;
+    text-align: center;
+}
+
+.file-info {
+    flex: 1;
+}
+
+.file-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--text-color);
+}
+
+.file-size {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Формы добавления */
+.add-update, .file-upload {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.add-update h3, .file-upload h3 {
+    margin: 0 0 16px 0;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Стили для прогресса проекта */
+.progress-section {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.progress-header h3 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.progress-percentage {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.progress-bar-large {
+    height: 12px;
+    background: var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 16px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 6px;
+    transition: width 0.3s;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .task-actions {
+        flex-direction: column;
+    }
+
+    .task-actions .btn {
+        width: 100%;
+    }
+
+    .info-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .info-label {
+        width: 100%;
+    }
+
+    .section-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .section-header button {
+        align-self: flex-end;
+    }
+}
+
+/* Общие стили для header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-title {
+    flex: 1;
+    text-align: center;
+}
+
+.header-title h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Стили для профиля в header */
+.profile-icon {
+    cursor: pointer;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Меню профиля */
+.profile-menu {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    width: 280px;
+    background: var(--surface-color);
+    border-radius: 16px;
+    box-shadow: var(--project-shadow);
+    z-index: 1000;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.profile-menu-header {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.profile-avatar-large {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: white;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-info strong {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.profile-info span {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.profile-menu-items {
+    padding: 10px 0;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: var(--text-color);
+    font-size: 14px;
+    transition: background 0.3s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    gap: 12px;
+}
+
+.menu-item:hover {
+    background: var(--hover-bg);
+}
+
+.menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 0;
+}
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+/* Стили для проектов на главной */
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.project-card {
+    background: var(--project-card-bg);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--project-shadow);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+}
+
+.project-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.create-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    border: 2px dashed var(--border-color);
+    background: transparent;
+    box-shadow: none;
+}
+
+.create-card:hover {
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.project-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.project-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.project-title h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.project-field {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.project-members {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.project-member-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.project-more {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.project-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.project-deadline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.project-progress-text {
+    font-weight: 600;
+}
+
+.progress-bar {
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header {
+        padding: 12px 16px;
+    }
+
+    .profile-menu {
+        width: calc(100vw - 40px);
+        right: 10px;
+        left: 10px;
+    }
+}
+
+/* Стили для прогресса проекта */
+.progress-section {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.progress-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 16px;
+}
+
+.progress-percentage {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.progress-bar-large {
+    height: 12px;
+    background: var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 16px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.progress-stats strong {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+/* Кнопка выполнения задачи */
+.task-complete-btn {
+    background: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.2s;
+}
+
+.task-complete-btn:hover {
+    background: #059669;
+}
+
+.task-complete-btn:disabled {
+    background: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+/* Статусы задач */
+.task-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-completed {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.status-in-progress {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.status-overdue {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.status-not-started {
+    background: #F3F4F6;
+    color: #4B5563;
+}
+
+/* Адаптивные стили для статистики */
+@media (max-width: 768px) {
+    .stats-overview {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 12px;
+    }
+
+    .stat-value {
+        font-size: 18px;
+    }
+
+    .progress-header h3 {
+        font-size: 14px;
+    }
+
+    .progress-percentage {
+        font-size: 20px;
+    }
+}
+
+/* Темная тема для статусов */
+.dark-theme .status-completed {
+    background: #064E3B;
+    color: #A7F3D0;
+}
+
+.dark-theme .status-in-progress {
+    background: #78350F;
+    color: #FDE68A;
+}
+
+.dark-theme .status-overdue {
+    background: #7F1D1D;
+    color: #FCA5A5;
+}
+
+.dark-theme .status-not-started {
+    background: #374151;
+    color: #D1D5DB;
+}
+/* Стили для чатов */
+.chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.message {
+    max-width: 70%;
+}
+
+.my-message {
+    align-self: flex-end;
+}
+
+.other-message {
+    align-self: flex-start;
+}
+
+.message-content {
+    padding: 10px 14px;
+    border-radius: 18px;
+    line-height: 1.4;
+}
+
+.message-content.my {
+    background: var(--primary-color);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message-content.other {
+    background: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: 4px;
+}
+
+.message-author {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--primary-color);
+}
+
+.message-time {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.system-message {
+    align-self: center;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    font-size: 14px;
+    max-width: 90%;
+}
+
+/* Кнопка удаления проекта */
+.delete-project-btn {
+    color: var(--danger-color) !important;
+}
+
+.delete-project-btn:hover {
+    background: var(--danger-color) !important;
+    color: white !important;
+}
+
+/* Уведомления с кнопкой удаления */
+.notification-delete {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--danger-color);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.notification-item:hover .notification-delete {
+    opacity: 1;
+}
+
+.notification-delete:hover {
+    background: #dc2626;
+}
+
+/* Стили для страниц добавления */
+.add-members, .create-tasks, .create-sections {
+    background: var(--surface-color);
+    border-radius: 16px;
+    padding: 30px;
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.members-input-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.members-input-container .form-input {
+    flex: 1;
+}
+
+.members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--border-color);
+    border-radius: 10px;
+    gap: 12px;
+}
+
+.member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.member-name {
+    flex: 1;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.remove-member {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--danger-color);
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.remove-member:hover {
+    background: #dc2626;
+}
+
+.form-section {
+    margin-bottom: 32px;
+}
+
+.form-section h2 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: var(--text-color);
+}
+
+.form-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+}
+
+.deadline-input {
+    display: flex;
+    gap: 10px;
+}
+
+.deadline-input .form-input {
+    flex: 1;
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Кнопки приоритета */
+.priority-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.priority-btn {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.priority-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.priority-btn.active {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.priority-btn.low.active {
+    border-color: #10B981;
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.priority-btn.medium.active {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.priority-btn.high.active {
+    border-color: #EF4444;
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+/* Чекбоксы участников */
+.member-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--border-color);
+    border-radius: 10px;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+    margin-bottom: 8px;
+}
+
+.member-checkbox.active {
+    background: var(--primary-color);
+    border-color: var(--primary-light);
+    color: white;
+}
+
+.member-checkbox .member-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.member-checkbox.active .member-avatar {
+    background: white;
+    color: var(--primary-color);
+}
+
+.member-checkbox .member-name {
+    flex: 1;
+    font-size: 14px;
+}
+
+.member-checkbox .fa-check {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.member-checkbox.active .fa-check {
+    opacity: 1;
+}
+
+/* Теги разделов */
+.section-tag {
+    display: inline-flex;
+    align-items: center;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 14px;
+    gap: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.section-tag-name {
+    font-weight: 500;
+}
+
+.section-tag-count {
+    background: var(--primary-color);
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.section-tag-remove {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.section-tag-remove:hover {
+    background: rgba(0,0,0,0.1);
+    color: var(--danger-color);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .add-members, .create-tasks, .create-sections {
+        padding: 20px;
+        margin: 16px;
+    }
+
+    .deadline-input {
+        flex-direction: column;
+    }
+
+    .priority-buttons {
+        flex-direction: column;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+    }
 }

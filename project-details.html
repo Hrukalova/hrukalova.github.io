@@ -25,18 +25,44 @@
             <i class="fas fa-arrow-left"></i>
         </a>
 
-        <div class="header-title" id="projectTitle">
-            <!-- Загрузится через JS -->
+        <div class="header-title">
+            <h1 id="projectTitle"></h1>
         </div>
 
         <div class="header-actions">
-            <button class="icon-btn" onclick="openStats()" title="Статистика работы">
-                <i class="fas fa-chart-bar"></i>
+            <button class="icon-btn" onclick="deleteProject()" title="Удалить проект" style="color: var(--danger-color);">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+            <button class="icon-btn" onclick="openStats()" title="Статистика">
+                <i class="fas fa-chart-pie"></i>
+            </button>
+        </div>
+
+        <div class="header-actions">
+            <button class="icon-btn" onclick="openStats()" title="Статистика">
+                <i class="fas fa-chart-pie"></i>
             </button>
         </div>
     </header>
 
     <main class="container project-details">
+        <!-- Кнопка статистики -->
+        <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+            <button class="btn" onclick="openStats()" style="
+                background: var(--surface-color);
+                border: 1px solid var(--border-color);
+                box-shadow: var(--shadow-sm);
+                border-radius: 30px;
+                padding: 10px 24px;
+                color: var(--primary-color);
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;">
+                <i class="fas fa-chart-pie"></i> Смотреть статистику работы
+            </button>
+        </div>
+
         <!-- Информация о проекте -->
         <div class="project-info-card">
             <div class="project-meta">
@@ -51,43 +77,45 @@
             </div>
         </div>
 
-        <!-- Участники проекта -->
+        <!-- Участники -->
         <div class="section">
-            <h2>Участники</h2>
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">Участники</h2>
+                <button class="icon-btn btn-small" onclick="addMember()" title="Добавить участника">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
             <div class="members-grid" id="membersGrid">
-                <!-- Загрузится через JS -->
+                <!-- Участники загрузятся через JS -->
             </div>
         </div>
 
         <!-- Разделы проекта -->
         <div class="section">
-            <div class="section-header">
-                <h2>Разделы проекта</h2>
-                <button class="btn btn-small" onclick="addSection()">
-                    <i class="fas fa-plus"></i> Добавить
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">Разделы проекта</h2>
+                <button class="icon-btn btn-small" onclick="addSection()" title="Добавить раздел">
+                    <i class="fas fa-plus"></i>
                 </button>
             </div>
-
             <div class="sections-grid" id="sectionsGrid">
-                <!-- Загрузится через JS -->
+                <!-- Разделы загрузятся через JS -->
             </div>
         </div>
 
         <!-- Ближайшие задачи -->
         <div class="section">
-            <h2>Ближайшие задачи</h2>
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">Ближайшие задачи</h2>
+                <button class="icon-btn btn-small" onclick="createTask()" title="Добавить задачу">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
             <div class="upcoming-tasks" id="upcomingTasks">
-                <!-- Загрузится через JS -->
+                <!-- Задачи загрузятся через JS -->
             </div>
         </div>
     </main>
-
-    <!-- Футер с кнопкой создания задачи -->
-    <footer class="footer-create">
-        <button class="fab-btn" onclick="createTask()">
-            <i class="fas fa-plus"></i>
-        </button>
-    </footer>
 
     <!-- Модальное окно добавления раздела -->
     <div class="modal" id="addSectionModal" style="display: none;">
@@ -116,9 +144,9 @@
     </div>
 
     <script>
-        // ОБЪЯВЛЯЕМ ПЕРЕМЕННЫЕ ГЛОБАЛЬНО, НЕ ВНУТРИ DOMContentLoaded
+        // Объявляем переменные глобально
         let currentProject = null;
-        let projectId = null; // Объявляем здесь
+        let projectId = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             // Получаем ID проекта из URL
@@ -144,7 +172,7 @@
             }
 
             // Обновляем заголовок
-            document.getElementById('projectTitle').innerHTML = `<h1>${currentProject.name}</h1>`;
+            document.getElementById('projectTitle').textContent = currentProject.name;
 
             // Обновляем мета-информацию
             document.getElementById('projectField').textContent = currentProject.field || 'Общая тема';
@@ -154,9 +182,7 @@
                 `<i class="far fa-calendar-alt"></i> до ${deadline.toLocaleDateString('ru-RU')}`;
 
             // Обновляем прогресс
-            const progress = calculateProjectProgress();
-            document.getElementById('progressBar').style.width = `${progress}%`;
-            document.getElementById('progressText').textContent = `${progress}% выполнено`;
+            updateProjectProgress();
 
             // Загружаем участники
             loadMembers();
@@ -168,11 +194,24 @@
             loadUpcomingTasks();
         }
 
-        function calculateProjectProgress() {
-            if (!currentProject.tasks || currentProject.tasks.length === 0) return 0;
+        function updateProjectProgress() {
+            const progress = calculateProjectProgress();
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `${progress}% выполнено`;
 
-            const completedTasks = currentProject.tasks.filter(task => task.completed).length;
-            return Math.round((completedTasks / currentProject.tasks.length) * 100);
+            // Сохраняем прогресс в проект
+            currentProject.progress = progress;
+            saveProjectChanges();
+        }
+
+        function calculateProjectProgress() {
+            if (!currentProject.tasks || currentProject.tasks.length === 0) {
+                return 0;
+            }
+
+            const completed = currentProject.tasks.filter(t => t.completed).length;
+            const total = currentProject.tasks.length;
+            return Math.round((completed / total) * 100);
         }
 
         function loadMembers() {
@@ -180,25 +219,64 @@
             membersGrid.innerHTML = '';
 
             const members = currentProject.members || [];
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+
+            if (members.length === 0) {
+                membersGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 20px;">
+                        <p style="color: var(--text-secondary); margin: 0;">Нет участников</p>
+                    </div>
+                `;
+                return;
+            }
 
             members.forEach(member => {
                 let displayName = member;
                 let initials = '';
 
+                // Ищем зарегистрированного пользователя
                 if (member.includes('@')) {
-                    const username = member.split('@')[0];
-                    displayName = username.charAt(0).toUpperCase() + username.slice(1);
-                    initials = username.charAt(0).toUpperCase();
+                    const foundUser = users.find(u => u.email === member);
+                    if (foundUser) {
+                        displayName = `${foundUser.firstName} ${foundUser.lastName}`;
+                        initials = foundUser.firstName.charAt(0).toUpperCase() +
+                                foundUser.lastName.charAt(0).toUpperCase();
+                    } else {
+                        // Показываем имя из email
+                        const nameFromEmail = member.split('@')[0];
+                        displayName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+                        initials = displayName.charAt(0).toUpperCase();
+                    }
                 } else {
+                    displayName = member;
                     const nameParts = member.split(' ');
-                    initials = nameParts.map(part => part.charAt(0)).join('').toUpperCase();
+                    initials = nameParts.map(part => part.charAt(0).toUpperCase()).join('').slice(0, 2);
                 }
 
                 const memberCard = document.createElement('div');
                 memberCard.className = 'member-card';
                 memberCard.innerHTML = `
-                    <div class="member-avatar">${initials}</div>
-                    <span class="member-name">${displayName}</span>
+                    <div class="member-avatar" style="
+                        width: 40px; height: 40px;
+                        background: var(--primary-light);
+                        color: var(--primary-color);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        font-size: 14px;
+                        margin: 0 auto 8px;">
+                        ${initials}
+                    </div>
+                    <span class="member-name" style="
+                        font-size: 14px;
+                        font-weight: 500;
+                        text-align: center;
+                        display: block;
+                        color: var(--text-color);">
+                        ${displayName}
+                    </span>
                 `;
                 membersGrid.appendChild(memberCard);
             });
@@ -263,107 +341,306 @@
 
             if (!currentProject.tasks || currentProject.tasks.length === 0) {
                 upcomingTasks.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-tasks"></i>
-                        <p>Пока нет задач</p>
+                    <div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                        <i class="fas fa-tasks" style="font-size: 24px; margin-bottom: 8px;"></i>
+                        <p style="margin: 0;">Нет задач</p>
                     </div>
                 `;
                 return;
             }
 
-            // Фильтруем незавершенные задачи и сортируем по дедлайну
-            const now = new Date();
-            const upcoming = currentProject.tasks
-                .filter(task => !task.completed && task.deadline)
-                .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
-                .slice(0, 3); // Берем только 3 ближайшие
+            // Сортируем задачи: сначала невыполненные, потом выполненные
+            const sortedTasks = [...currentProject.tasks].sort((a, b) => {
+                // Сначала невыполненные
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1;
+                }
+                // Потом по дедлайну (ближайшие сверху)
+                return new Date(a.deadline) - new Date(b.deadline);
+            }).slice(0, 5); // Показываем только 5 задач
 
-            upcoming.forEach(task => {
+            sortedTasks.forEach(task => {
                 const deadline = new Date(task.deadline);
-                const daysDiff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+                const now = new Date();
+                const timeDiff = deadline - now;
+                const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
 
-                let statusClass = '';
-                if (daysDiff < 0) statusClass = 'overdue';
-                else if (daysDiff === 0) statusClass = 'today';
-                else if (daysDiff <= 3) statusClass = 'urgent';
+                // Форматируем дату
+                const formattedDate = deadline.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'short'
+                });
+
+                let statusText = '';
+                let statusColor = '';
+                let daysText = '';
+
+                if (task.completed) {
+                    statusText = 'Выполнено';
+                    statusColor = 'var(--success-color)';
+                    daysText = '';
+                } else if (daysDiff < 0) {
+                    statusText = 'Просрочено';
+                    statusColor = 'var(--danger-color)';
+                    daysText = `(${Math.abs(daysDiff)} дн. назад)`;
+                } else if (daysDiff === 0) {
+                    statusText = 'Сегодня';
+                    statusColor = 'var(--warning-color)';
+                    daysText = '';
+                } else if (daysDiff === 1) {
+                    statusText = 'Завтра';
+                    statusColor = 'var(--warning-color)';
+                    daysText = '';
+                } else if (daysDiff <= 7) {
+                    statusText = `${daysDiff} дн.`;
+                    statusColor = 'var(--accent-color)';
+                    daysText = '';
+                } else {
+                    statusText = formattedDate;
+                    statusColor = 'var(--text-secondary)';
+                    daysText = `(${daysDiff} дн.)`;
+                }
+
+                // Получаем имена исполнителей
+                let assigneeNames = 'Нет исполнителя';
+                if (task.assignees && task.assignees.length > 0) {
+                    const users = JSON.parse(localStorage.getItem('users') || '[]');
+                    assigneeNames = task.assignees.map(email => {
+                        const user = users.find(u => u.email === email);
+                        if (user) {
+                            return `${user.firstName} ${user.lastName}`;
+                        }
+                        return email.split('@')[0];
+                    }).join(', ');
+                }
 
                 const taskItem = document.createElement('div');
-                taskItem.className = `task-item ${statusClass}`;
-                taskItem.onclick = () => openTask(task.id);
+                taskItem.className = 'task-item';
+                taskItem.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    background: var(--surface-color);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 10px;
+                    border: 1px solid var(--border-color);
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    opacity: ${task.completed ? '0.7' : '1'};
+                `;
+                taskItem.onclick = (e) => {
+                    // Проверяем, не кликнули ли на кнопку
+                    if (!e.target.closest('.task-complete-btn') && !e.target.closest('.task-status-icon')) {
+                        openTask(task.id);
+                    }
+                };
+                taskItem.onmouseover = () => {
+                    taskItem.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                };
+                taskItem.onmouseout = () => {
+                    taskItem.style.boxShadow = 'none';
+                };
+
                 taskItem.innerHTML = `
-                    <div class="task-priority"></div>
-                    <div class="task-content">
-                        <h4>${task.title}</h4>
-                        <div class="task-meta">
-                            <span>${task.section || 'Без раздела'}</span>
-                            <span class="deadline">
-                                <i class="far fa-calendar"></i>
-                                ${deadline.toLocaleDateString('ru-RU')}
+                    <div style="
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 50%;
+                        background: ${task.completed ? 'var(--success-color)' : 'var(--primary-color)'};
+                        margin-right: 12px;
+                        flex-shrink: 0;">
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            margin-bottom: 8px;">
+                            <h4 style="
+                                margin: 0;
+                                font-size: 16px;
+                                font-weight: 500;
+                                color: var(--text-color);
+                                ${task.completed ? 'text-decoration: line-through;' : ''}">
+                                ${task.title}
+                            </h4>
+                            <span style="
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: ${statusColor};
+                                white-space: nowrap;
+                                margin-left: 10px;">
+                                ${statusText}
                             </span>
                         </div>
+
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 12px;
+                            color: var(--text-secondary);">
+                            <div>
+                                <span style="color: var(--primary-color); font-weight: 500;">${assigneeNames}</span>
+                                ${daysText ? `<span style="margin-left: 8px;">${daysText}</span>` : ''}
+                            </div>
+                            <div>
+                                <i class="far fa-calendar" style="margin-right: 4px;"></i>
+                                ${formattedDate}
+                            </div>
+                        </div>
+
+                        ${task.description ? `
+                            <div style="
+                                margin-top: 8px;
+                                font-size: 13px;
+                                color: var(--text-secondary);
+                                line-height: 1.4;
+                                display: -webkit-box;
+                                -webkit-line-clamp: 2;
+                                -webkit-box-orient: vertical;
+                                overflow: hidden;">
+                                <i class="far fa-file-alt" style="margin-right: 4px;"></i>
+                                ${task.description}
+                            </div>
+                        ` : ''}
+
+                        ${task.completed ? `
+                            <div style="
+                                margin-top: 8px;
+                                font-size: 11px;
+                                color: var(--success-color);
+                                font-weight: 500;
+                                display: flex;
+                                align-items: center;
+                                gap: 4px;">
+                                <i class="fas fa-check-circle"></i>
+                                Задача выполнена
+                            </div>
+                        ` : `
+                            <div style="
+                                margin-top: 8px;
+                                display: flex;
+                                justify-content: flex-end;">
+                                <button onclick="markTaskAsCompleted(${task.id}, event)"
+                                        class="task-complete-btn">
+                                    <i class="fas fa-check"></i> Выполнено
+                                </button>
+                            </div>
+                        `}
                     </div>
-                    <div class="task-status">
+
+                    <div class="task-status-icon" style="
+                        margin-left: 12px;
+                        color: ${task.completed ? 'var(--success-color)' : 'var(--text-secondary)'};
+                        font-size: 20px;
+                        cursor: pointer;"
+                        onclick="markTaskAsCompleted(${task.id}, event)">
                         ${task.completed ?
                             '<i class="fas fa-check-circle"></i>' :
                             '<i class="far fa-circle"></i>'}
                     </div>
                 `;
+
                 upcomingTasks.appendChild(taskItem);
             });
         }
 
+        function markTaskAsCompleted(taskId, event) {
+            if (event) event.stopPropagation();
+
+            // Находим задачу
+            const taskIndex = currentProject.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) {
+                console.error('Задача не найдена');
+                return;
+            }
+
+            console.log('Текущая задача:', currentProject.tasks[taskIndex]);
+            console.log('Все задачи:', currentProject.tasks);
+
+            // Изменяем статус
+            currentProject.tasks[taskIndex].completed = true;
+
+            console.log('После изменения:', currentProject.tasks[taskIndex]);
+
+            // Сохраняем изменения
+            saveProjectChanges();
+
+            // Обновляем отображение
+            loadUpcomingTasks();
+
+            // Обновляем прогресс
+            updateProjectProgress();
+
+            // Показываем уведомление
+            const taskTitle = currentProject.tasks[taskIndex].title;
+            alert(`Задача "${taskTitle}" отмечена как выполненная!`);
+
+            // Создаем системное уведомление
+            createTaskCompletedNotification(taskTitle);
+        }
+
+        function createTaskCompletedNotification(taskTitle) {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            notifications.unshift({
+                id: Date.now(),
+                type: 'task',
+                title: 'Задача выполнена',
+                message: `${currentUser.firstName} отметил(а) задачу "${taskTitle}" как выполненную`,
+                project: currentProject.name,
+                time: new Date().toISOString(),
+                read: false,
+                action: `project-details.html?id=${projectId}`
+            });
+
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+        }
+
+        function saveProjectChanges() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectIndex = projects.findIndex(p => p.id === projectId);
+
+            console.log('Сохранение проекта:', {
+                projectId,
+                projectIndex,
+                currentProject,
+                allProjects: projects
+            });
+
+            if (projectIndex !== -1) {
+                // Обновляем проект в списке
+                projects[projectIndex] = currentProject;
+                localStorage.setItem('projects', JSON.stringify(projects));
+                console.log('Проект сохранен');
+            } else {
+                console.error('Проект не найден в списке');
+            }
+        }
+
         function openSection(sectionName) {
-            sessionStorage.setItem('currentSection', sectionName);
             window.location.href = `section-tasks.html?projectId=${projectId}&section=${encodeURIComponent(sectionName)}`;
         }
 
         function openTask(taskId) {
-            sessionStorage.setItem('currentTaskId', taskId);
             window.location.href = `task-details.html?projectId=${projectId}&taskId=${taskId}`;
         }
 
         function createTask() {
-            window.location.href = `create-task.html?projectId=${projectId}`;
+            window.location.href = `add-task-to-project.html?projectId=${projectId}`;
         }
 
         function openStats() {
             window.location.href = `project-stats.html?projectId=${projectId}`;
         }
 
-        function addSection() {
-            document.getElementById('sectionNameInput').value = '';
-            document.getElementById('addSectionModal').style.display = 'block';
+        function addMember() {
+            window.location.href = `add-member-to-project.html?projectId=${projectId}`;
         }
 
-        function saveNewSection() {
-            const sectionName = document.getElementById('sectionNameInput').value.trim();
-
-            if (!sectionName) {
-                alert('Введите название раздела');
-                return;
-            }
-
-            if (!currentProject.sections) {
-                currentProject.sections = [];
-            }
-
-            if (currentProject.sections.includes(sectionName)) {
-                alert('Раздел с таким названием уже существует');
-                return;
-            }
-
-            currentProject.sections.push(sectionName);
-
-            // Сохраняем изменения
-            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-            const projectIndex = projects.findIndex(p => p.id === projectId);
-            if (projectIndex !== -1) {
-                projects[projectIndex] = currentProject;
-                localStorage.setItem('projects', JSON.stringify(projects));
-            }
-
-            closeModal('addSectionModal');
-            loadSections();
+        function addSection() {
+            window.location.href = `add-section-to-project.html?projectId=${projectId}`;
         }
 
         function editSection(index, event) {
@@ -385,67 +662,258 @@
                     });
                 }
 
-                // Сохраняем изменения
-                const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-                const projectIndex = projects.findIndex(p => p.id === projectId);
-                if (projectIndex !== -1) {
-                    projects[projectIndex] = currentProject;
-                    localStorage.setItem('projects', JSON.stringify(projects));
-                }
-
+                saveProjectChanges();
                 loadSections();
             }
         }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
     </script>
-    <!-- Нижняя навигация -->
-    <nav class="bottom-nav">
-        <a href="dashboard.html" class="nav-item ${window.location.pathname.includes('dashboard') ? 'active' : ''}">
-            <i class="fas fa-home nav-icon"></i>
-            <span class="nav-label">Главная</span>
-        </a>
 
-        <a href="notifications.html" class="nav-item ${window.location.pathname.includes('notifications') ? 'active' : ''}">
-            <i class="fas fa-bell nav-icon"></i>
-            <span class="nav-label">Уведомления</span>
-            <span class="notification-badge" id="notificationCount"></span>
-        </a>
+    <style>
+        .project-details {
+            padding-bottom: 20px;
+        }
 
-        <a href="meetings.html" class="nav-item ${window.location.pathname.includes('meetings') ? 'active' : ''}">
-            <i class="fas fa-phone-alt nav-icon"></i>
-            <span class="nav-label">Созвоны</span>
-        </a>
+        .project-info-card {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
 
-        <a href="project-chats.html" class="nav-item ${window.location.pathname.includes('chat') ? 'active' : ''}">
-            <i class="fas fa-comments nav-icon"></i>
-            <span class="nav-label">Чаты</span>
-        </a>
-    </nav>
+        .project-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
 
-    <script>
-        // Функция для обновления бейджа уведомлений
-        function updateNotificationBadge() {
-            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-            const unreadCount = notifications.filter(n => !n.read).length;
-            const badge = document.getElementById('notificationCount');
+        .project-field {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
 
-            if (badge) {
-                if (unreadCount > 0) {
-                    badge.textContent = unreadCount;
-                    badge.style.display = 'flex';
-                } else {
-                    badge.style.display = 'none';
-                }
+        .project-deadline {
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .project-progress {
+            margin-top: 16px;
+        }
+
+        .members-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .member-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            transition: transform 0.2s;
+            border: 1px solid var(--border-color);
+        }
+
+        .member-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .section-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .section-content {
+            flex: 1;
+        }
+
+        .section-content h3 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+        }
+
+        .section-content p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .section-actions {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .section-card:hover .section-actions {
+            opacity: 1;
+        }
+
+        .upcoming-tasks {
+            margin-top: 16px;
+        }
+
+        .task-item {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .task-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .task-complete-btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.2s;
+        }
+
+        .task-complete-btn:hover {
+            background: #059669;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: var(--border-color);
+        }
+
+        .empty-state h3 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+        }
+
+        .empty-state p {
+            margin: 0 0 20px 0;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .sections-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .members-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
         }
-
-        // Вызываем при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            updateNotificationBadge();
-        });
-    </script>
+    </style>
 </body>
 </html>
